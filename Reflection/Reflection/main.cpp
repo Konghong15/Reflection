@@ -1,30 +1,64 @@
-#include <iostream>
+ï»¿#include <iostream>
 #include <unordered_map>
 #include <vector>
-#include <functional>
 #include <string>
+#include <sstream>
+#include <functional>
 
+// ë¦¬í”Œë ‰ì…˜ ë°ì´í„° ì €ì¥ êµ¬ì¡°ì²´
 struct TypeInfo {
 	std::string name;
 	std::vector<std::string> fields;
-	std::vector<std::string> methods;
 	std::function<void* ()> constructor;
 };
 
-// Àü¿ª Å¬·¡½º Á¤º¸ ÀúÀå¼Ò
-std::unordered_map<std::string, TypeInfo> g_TypeRegistry;
+// ì „ì—­ í´ë˜ìŠ¤ ì •ë³´ ì €ì¥ì†Œ
+std::unordered_map<std::string, TypeInfo>& GetTypeRegistry() {
+	static std::unordered_map<std::string, TypeInfo> registry;
+	return registry;
+}
 
-// ¸ÅÅ©·Î¸¦ ÀÌ¿ëÇÑ Å¬·¡½º µî·Ï
-#define REGISTER_CLASS(CLASS) \
-    g_TypeRegistry[#CLASS] = TypeInfo{#CLASS, {}, {}, []() -> void* { return new CLASS(); }};
+// í…œí”Œë¦¿ì„ ì´ìš©í•œ í´ë˜ìŠ¤ ë“±ë¡
+template<typename T>
+struct Reflect {
+	static void Register(const std::string& className, std::function<void* ()> constructor) {
+		GetTypeRegistry()[className] = { className, {}, constructor };
+	}
+};
 
-#define REGISTER_FIELD(CLASS, FIELD) \
-    g_TypeRegistry[#CLASS].fields.push_back(#FIELD);
+// í•„ë“œ ë“±ë¡ í…œí”Œë¦¿
+template<typename T, typename U>
+struct Field {
+	std::string name;
+	U T::* ptr;
+};
 
-#define REGISTER_METHOD(CLASS, METHOD) \
-    g_TypeRegistry[#CLASS].methods.push_back(#METHOD);
+// í´ë˜ìŠ¤ ì •ë³´ ì €ì¥ í…œí”Œë¦¿
+template<typename T>
+struct ClassMeta {
+	static std::vector<std::pair<std::string, size_t>> fields;
 
-// ¿¹Á¦ Å¬·¡½º
+	template<typename... Fields>
+	static void Register(const std::string& className, std::function<void* ()> constructor, Fields... f) {
+		Reflect<T>::Register(className, constructor);
+		(fields.push_back({ f.name, sizeof(f.ptr) }), ...);
+	}
+};
+
+// `ClassMeta`ì˜ í•„ë“œ ì´ˆê¸°í™”
+template<typename T>
+std::vector<std::pair<std::string, size_t>> ClassMeta<T>::fields = {};
+
+// ê°ì²´ë¥¼ ë¬¸ìì—´ë¡œ ë™ì  ìƒì„±
+void* CreateInstance(const std::string& className) {
+	auto& registry = GetTypeRegistry();
+	if (registry.find(className) != registry.end()) {
+		return registry[className].constructor();
+	}
+	return nullptr;
+}
+
+// ğŸ”¹ ì˜ˆì œ í´ë˜ìŠ¤
 class Person {
 public:
 	std::string name;
@@ -33,59 +67,45 @@ public:
 	void SayHello() {
 		std::cout << "Hello, my name is " << name << "!" << std::endl;
 	}
+
+	// ê°ì²´ë¥¼ ë¬¸ìì—´ë¡œ ë³€í™˜ (JSON ì—†ì´)
+	std::string Serialize() {
+		std::stringstream ss;
+		for (const auto& field : ClassMeta<Person>::fields) {
+			if (field.first == "name") ss << "name: " << name << ", ";
+			if (field.first == "age") ss << "age: " << age;
+		}
+		return ss.str();
+	}
 };
 
-// ¸ŞÅ¸µ¥ÀÌÅÍ µî·Ï ÇÔ¼ö
-void RegisterTypes() {
-	REGISTER_CLASS(Person);
-	REGISTER_FIELD(Person, name);
-	REGISTER_FIELD(Person, age);
-	REGISTER_METHOD(Person, SayHello);
+// ğŸ”¹ í´ë˜ìŠ¤ ë“±ë¡ (í…œí”Œë¦¿ ì‚¬ìš©)
+void RegisterClasses() {
+	ClassMeta<Person>::Register("Person", []() -> void* { return new Person(); },
+		Field<Person, std::string>{"name", & Person::name},
+		Field<Person, int>{"age", & Person::age}
+	);
 }
 
-void* CreateInstnace(const std::string& className)
-{
-	auto it = g_TypeRegistry.find(className);
-
-	if (it != g_TypeRegistry.end() && it->second.constructor)
-	{
-		return it->second.constructor();
-	}
-
-	return nullptr;
-}
-
+// ğŸ”¹ ëŸ°íƒ€ì„ì—ì„œ í´ë˜ìŠ¤ ì •ë³´ ì¡°íšŒ & ê°ì²´ ìƒì„±
 int main() {
-	RegisterTypes();
+	RegisterClasses();
 
-	// "Person" ¹®ÀÚ¿­À» ±â¹İÀ¸·Î µ¿ÀûÀ¸·Î °´Ã¼ »ı¼º
-	void* obj = CreateInstnace("Person");
-	if (obj)
-	{
+	// ë¬¸ìì—´ ê¸°ë°˜ìœ¼ë¡œ ê°ì²´ ìƒì„±
+	void* obj = CreateInstance("Person");
+	if (obj) {
 		Person* person = static_cast<Person*>(obj);
 		person->name = "Alice";
 		person->age = 25;
 		person->SayHello();
+
+		// ê°ì²´ ì§ë ¬í™” (JSON ì—†ì´)
+		std::cout << "Serialized: " << person->Serialize() << std::endl;
+
 		delete person;
 	}
-	else
-	{
+	else {
 		std::cout << "Class not found!\n";
-	}
-
-	// ·±Å¸ÀÓ¿¡¼­ Å¬·¡½º Á¤º¸ Á¶È¸
-	auto it = g_TypeRegistry.find("Person");
-	
-	if (it != g_TypeRegistry.end()) {
-		std::cout << "Class: " << it->second.name << "\n";
-		std::cout << "Fields:\n";
-		for (const auto& field : it->second.fields) {
-			std::cout << "  " << field << "\n";
-		}
-		std::cout << "Methods:\n";
-		for (const auto& method : it->second.methods) {
-			std::cout << "  " << method << "()\n";
-		}
 	}
 
 	return 0;
