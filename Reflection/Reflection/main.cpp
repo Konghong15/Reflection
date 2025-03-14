@@ -8,6 +8,7 @@ struct TypeInfo {
 	std::string name;
 	std::vector<std::string> fields;
 	std::vector<std::string> methods;
+	std::function<void* ()> constructor;
 };
 
 // 전역 클래스 정보 저장소
@@ -15,7 +16,7 @@ std::unordered_map<std::string, TypeInfo> g_TypeRegistry;
 
 // 매크로를 이용한 클래스 등록
 #define REGISTER_CLASS(CLASS) \
-    g_TypeRegistry[#CLASS] = TypeInfo{#CLASS, {}, {}};
+    g_TypeRegistry[#CLASS] = TypeInfo{#CLASS, {}, {}, []() -> void* { return new CLASS(); }};
 
 #define REGISTER_FIELD(CLASS, FIELD) \
     g_TypeRegistry[#CLASS].fields.push_back(#FIELD);
@@ -42,11 +43,39 @@ void RegisterTypes() {
 	REGISTER_METHOD(Person, SayHello);
 }
 
+void* CreateInstnace(const std::string& className)
+{
+	auto it = g_TypeRegistry.find(className);
+
+	if (it != g_TypeRegistry.end() && it->second.constructor)
+	{
+		return it->second.constructor();
+	}
+
+	return nullptr;
+}
+
 int main() {
 	RegisterTypes();
 
+	// "Person" 문자열을 기반으로 동적으로 객체 생성
+	void* obj = CreateInstnace("Person");
+	if (obj)
+	{
+		Person* person = static_cast<Person*>(obj);
+		person->name = "Alice";
+		person->age = 25;
+		person->SayHello();
+		delete person;
+	}
+	else
+	{
+		std::cout << "Class not found!\n";
+	}
+
 	// 런타임에서 클래스 정보 조회
 	auto it = g_TypeRegistry.find("Person");
+	
 	if (it != g_TypeRegistry.end()) {
 		std::cout << "Class: " << it->second.name << "\n";
 		std::cout << "Fields:\n";
@@ -58,5 +87,6 @@ int main() {
 			std::cout << "  " << method << "()\n";
 		}
 	}
+
 	return 0;
 }

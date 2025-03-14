@@ -31,3 +31,5 @@
 *.out
 *.app
 Reflection/.vs
+Reflection/Reflection/x64/Debug
+Reflection/x64
