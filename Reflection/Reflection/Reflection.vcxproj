@@ -129,10 +129,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="RegisterPrimitives.cpp" />
+    <ClCompile Include="TypeInfo.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Reflect.h" />
+    <ClInclude Include="Property.h" />
+    <ClInclude Include="TypeInfo.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
