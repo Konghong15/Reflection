@@ -129,7 +129,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Primitives.cpp" />
+    <ClCompile Include="RegisterPrimitives.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Reflect.h" />

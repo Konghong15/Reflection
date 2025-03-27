@@ -18,7 +18,7 @@
     <ClCompile Include="main.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="Primitives.cpp">
+    <ClCompile Include="RegisterPrimitives.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
