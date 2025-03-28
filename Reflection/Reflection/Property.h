@@ -7,13 +7,14 @@
 
 // -- 매크로
 #define PROPERTY(Name) \
-	inline static struct RegistPropertyExecutor_#Name \
+	inline static struct RegistPropertyExecutor_##Name \
 	{ \
 		RegistPropertyExecutor_##Name() \
 		{ \
-			static PropertyRegister<ThisType, decltype(##Name), decltype(&ThisType::##Name), &ThisType::##Name> property_register_##Name{ #Name, ThisType::StaticTypeInfo() }; \
+			static PropertyRegister<ThisType, decltype(Name), decltype(&ThisType::Name), &ThisType::##Name> property_register_##Name{ #Name, ThisType::StaticTypeInfo() }; \
 		} \
-	} regist_##Name;
+	} regist_##Name; \
+
 
 	// 범용적인 참조를 위한 베이스 핸들러
 class PropertyHandlerBase
@@ -152,6 +153,7 @@ public:
 			: mValue(&value)
 		{
 		}
+		ReturnValueWrapper() = default;
 
 		ReturnValueWrapper& operator=(const T& value)
 		{
@@ -222,13 +224,18 @@ public:
 
 		if (typeInfo.IsA<PropertyHandler<TClass, T>>())
 		{
-			auto concreteHandler = static_cast<const PropertyHandler<TClass, T>&>(mHandler);
-			return ReturnValueWrapper(concreteHandler.Get(object));
+			auto concreateHandler = static_cast<const PropertyHandler<TClass, T>&>(mHandler);
+			return ReturnValueWrapper(concreateHandler.Get(object));
 		}
 		else if (typeInfo.IsA<StaticPropertyHandler<TClass, T>>())
 		{
-			auto concreteHandler = static_cast<const StaticPropertyHandler<TClass, T>&>(mHandler);
-			return ReturnValueWrapper(concreteHandler.Get(object));
+			auto concreateHandler = static_cast<const StaticPropertyHandler<TClass, T>&>(mHandler);
+			return ReturnValueWrapper(concreateHandler.Get(object));
+		}
+		else
+		{
+			assert(false && "Property::Get<TClass, T> - invalid casting");
+			return {};
 		}
 	}
 
@@ -237,8 +244,8 @@ public:
 	{
 		if (mHandler.GetTypeInfo().IsChildOf<IPropertyHandler<T>>())
 		{
-			auto concreteHandler = static_cast<const IPropertyHandler<T>*>(&mHandler);
-			concreteHandler->Set(object, value);
+			auto concreateHandler = static_cast<const IPropertyHandler<T>*>(&mHandler);
+			concreateHandler->Set(object, value);
 		}
 		else
 		{
@@ -257,8 +264,8 @@ public:
 		}
 		else if (typeInfo.IsA<StaticPropertyHandler<TClass, T>>())
 		{
-			auto concreteHandler = static_cast<const StaticPropertyHandler<TClass, T>&>(mHandler);
-			concreteHandler.Set(object, value);
+			auto concreateHandler = static_cast<const StaticPropertyHandler<TClass, T>&>(mHandler);
+			concreateHandler.Set(object, value);
 		}
 		else
 		{
@@ -276,26 +283,12 @@ public:
 		return mType;
 	}
 
-
 private:
 	const char* mName = nullptr;
 	const TypeInfo& mType;
 	const PropertyHandlerBase& mHandler;
 };
 
-template <typename T>
-struct SizeOfArray
-{
-	constexpr static size_t Value = 1;
-};
-
-template <typename T, size_t N>
-struct SizeOfArray<T[N]>
-{
-	constexpr static size_t Value = SizeOfArray<T>::Value * N;
-};
-
-// 프로퍼티 객체 생성에 필요한 데이터를 static으로 생성해줌
 template <typename TClass, typename T, typename TPtr, TPtr ptr>
 class PropertyRegister
 {

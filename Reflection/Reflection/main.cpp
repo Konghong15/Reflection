@@ -1,5 +1,6 @@
 ﻿#include <type_traits>
 #include <cassert>
+#include <iostream>
 #include "TypeInfo.h"
 #include "Property.h"
 
@@ -33,6 +34,8 @@ class AComponent : public Component
 public:
 
 private:
+
+
 };
 
 class BComponent : public Component
@@ -41,6 +44,42 @@ class BComponent : public Component
 public:
 
 private:
+};
+
+struct Vector3
+{
+	GENERATE_CLASS_TYPE_INFO(Vector3)
+		PROPERTY(x)
+		PROPERTY(y)
+		PROPERTY(z)
+
+public:
+	float x = 0.0f;
+	float y = 0.0f;
+	float z = 0.0f;
+
+	Vector3() = default;
+	Vector3(float x, float y, float z) : x(x), y(y), z(z) {}
+};
+
+class TransformComponent : public Component
+{
+	GENERATE_CLASS_TYPE_INFO(TransformComponent)
+
+public:
+	TransformComponent() = default;
+	TransformComponent(const Vector3& position) : mPosition(position) {}
+
+	// Getter
+	const Vector3& GetPosition() const { return mPosition; }
+
+	// Setter
+	void SetPosition(const Vector3& position) { mPosition = position; }
+	void SetPosition(float x, float y, float z) { mPosition = Vector3(x, y, z); }
+
+private:
+	PROPERTY(mPosition)
+		Vector3 mPosition;
 };
 
 class GameObject
@@ -86,7 +125,18 @@ private:
 };
 
 
+void TestTypeInfo(void);
+void TestProperty(void);
+
 int main()
+{
+	TestTypeInfo();
+	TestProperty();
+
+	return 0;
+}
+
+void TestTypeInfo(void)
 {
 	{
 		GameObject gameObject;
@@ -117,6 +167,48 @@ int main()
 		assert(&aComp == aCompPtr);
 		assert(bCompPtr == nullptr);
 	}
+}
 
-	return 0;
+void TestProperty(void)
+{
+	{
+		GameObject gameObject;
+		TransformComponent transform({ 0, 20, 30 });
+		
+		gameObject.AddComponent(&transform);
+		
+		Component* component = gameObject.GetComponentOrNull<TransformComponent>();
+		assert(component != nullptr);
+		
+		const TypeInfo& typeInfo = component->GetTypeInfo();
+		const Property* posProperty = typeInfo.GetProperty("mPosition");
+		
+		if (posProperty != nullptr)
+		{
+			posProperty->Get<TransformComponent, int>(&transform);
+			const Vector3& pos = posProperty->Get<TransformComponent, Vector3>(&transform);
+			//const Vector3& pos = posProperty->Get<Vector3>(&transform);
+			std::cout
+				<< "pos : { " << pos.x
+				<< " , " << pos.y
+				<< " , " << pos.z
+				<< " } " << std::endl;
+		
+			posProperty->Set(component, Vector3{100, 200, 300});
+		
+			std::cout
+				<< "pos : { " << pos.x
+				<< " , " << pos.y
+				<< " , " << pos.z
+				<< " } " << std::endl;
+		}
+
+		static struct Temp
+		{
+			int a;
+			int b;
+		} temp;
+
+		temp.a = 20;
+	}
 }

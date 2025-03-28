@@ -37,10 +37,9 @@ public: \
 private: \
 	inline static TypeInfo& mTypeInfo = StaticTypeInfo(); \
 \
-private: 
+private: \
 
 
-	// -- 컴파일 타임 조건 검사 -- 
 template <typename T>
 concept HasSuper = requires
 {
@@ -50,7 +49,7 @@ concept HasSuper = requires
 template <typename T>
 concept HasStaticTypeInfo = requires
 {
-	T::StaticTypeInfo(); // 이 맴버가 있으면 조건이 true로 평가됨
+	T::StaticTypeInfo();
 };
 
 template <typename T, typename U = void>
@@ -64,7 +63,6 @@ struct SuperClassTypeDeduction<T, std::void_t<typename T::ThisType>>
 {
 	using Type = T::ThisType;
 };
-
 
 // 부모의 타입 인포 객체를 얻어오는 객체
 template <typename T>
@@ -117,7 +115,7 @@ public:
 		return std::remove_pointer_t<T>::StaticTypeInfo();
 	}
 	template <typename T> requires (!HasStaticTypeInfo<T>) && (!HasStaticTypeInfo<std::remove_pointer_t<T>>)
-		static const TypeInfo& GetStaticTypeInfo()
+	static const TypeInfo& GetStaticTypeInfo()
 	{
 		static TypeInfo typeInfo{ TypeInfoInitializer<T>("unreflected type variable") };
 		return typeInfo;
