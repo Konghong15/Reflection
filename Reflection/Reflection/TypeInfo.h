@@ -6,10 +6,14 @@
 #include <string_view>
 #include <typeinfo>
 #include <vector>
+#include <cassert>
 
-namespace reflection
-{
-	// -- 매크로 -- 
+// -- 전방선언 --
+class Method;
+class Property;
+class TypeInfo;
+
+// -- 매크로 -- 
 #define GENERATE_CLASS_TYPE_INFO(TypeName) \
 private: \
 	friend SuperClassTypeDeduction; \
@@ -35,131 +39,181 @@ private: \
 \
 private: 
 
-	// -- 전방선언 --
-	class Method;
-	class Property;
-	class TypeInfo;
 
 	// -- 컴파일 타임 조건 검사 -- 
-	template <typename T>
-	concept HasSuper = requires
-	{
-		typename T::Super;
-	} && !std::same_as<typename T::Super, void>;
+template <typename T>
+concept HasSuper = requires
+{
+	typename T::Super;
+} && !std::same_as<typename T::Super, void>;
 
-	template <typename T>
-	concept HasStaticTypeInfo = requires
-	{
-		T::StaticTypeInfo(); // 이 맴버가 있으면 조건이 true로 평가됨
-	};
+template <typename T>
+concept HasStaticTypeInfo = requires
+{
+	T::StaticTypeInfo(); // 이 맴버가 있으면 조건이 true로 평가됨
+};
 
-	// 부모의 타입 인포 객체를 얻어오는 객체
-	template <typename T>
-	struct TypeInfoInitializer
+template <typename T, typename U = void>
+struct SuperClassTypeDeduction
+{
+	using Type = void;
+};
+
+template <typename T>
+struct SuperClassTypeDeduction<T, std::void_t<typename T::ThisType>>
+{
+	using Type = T::ThisType;
+};
+
+
+// 부모의 타입 인포 객체를 얻어오는 객체
+template <typename T>
+struct TypeInfoInitializer
+{
+	TypeInfoInitializer(const char* name)
+		: mName(name)
 	{
-		TypeInfoInitializer(const char* name)
-			: mName(name)
+		if constexpr (HasSuper<T>)
 		{
-			if constexpr (HasSuper<T>)
-			{
-				mSuper = &(typename T::Super::StaticTypeInfo());
-			}
+			mSuper = &(typename T::Super::StaticTypeInfo());
 		}
+	}
 
-		const char* mName = nullptr;
-		const TypeInfo* mSuper = nullptr;
-	};
+	const char* mName = nullptr;
+	const TypeInfo* mSuper = nullptr;
+};
 
-	class TypeInfo
+class TypeInfo
+{
+	friend class Method;
+	friend class Property;
+
+public:
+	// 왜 생성자에서 initializer를 받을까?
+	template <typename T>
+	explicit TypeInfo(const TypeInfoInitializer<T>& initializer)
+		: mTypeHash(typeid(T).hash_code())
+		, mName(initializer.mName)
+		, mFullName(typeid(T).name())
+		, mSuper(initializer.mSuper)
+		, mIsArray(std::is_array_v<T>)
 	{
-		friend Method;
-		friend Property;
-
-	public:
-		// 왜 생성자에서 initializer를 받을까?
-		template <typename T>
-		explicit TypeInfo(const TypeInfoInitializer<T>& initializer)
-			: mTypeHash(typeid(T).hash_code())
-			, mName(initializer.mName)
-			, mFullName(typeid(T).name())
-			, mSuper(initializer.mSuper)
-			, mIsArray(std::is_array_v<T>)
+		if constexpr (HasSuper<T>)
 		{
-			if constexpr (HasSuper<T>)
-			{
-
-			}
+			collectSuperMethods();
+			collectSuperProperties();
 		}
-
-		template <typename T> requires HasStaticTypeInfo<T>
-		static const TypeInfo& GetStaticTypeInfo();
-		template <typename T> requires std::is_pointer_v<T>&& HasStaticTypeInfo<std::remove_pointer_t<T>>
-		static const TypeInfo& GetStaticTypeInfo();
-		template <typename T> requires (!HasStaticTypeInfo<T>) && (!HasStaticTypeInfo<std::remove_pointer_t<T>>)
-		static const TypeInfo& GetStaticTypeInfo();
-
-		template <typename T>
-		bool IsA() const;
-		bool IsA(const TypeInfo& other) const;
-
-		template <typename T>
-		bool IsChildOf() const;
-		bool IsChildOf(const TypeInfo& other) const;
-
-		inline const std::vector<const Method*>& GetMethods() const;
-		inline const Method* GetMethod(const char* name) const;
-
-		inline const std::vector<const Property*>& GetProperties() const;
-		inline const Property* GetProperty(const char* name) const;
-
-		inline const TypeInfo* GetSuperOrNull() const;
-
-		const char* GetName() const;
-
-		inline bool IsArray() const;
-
-	private:
-		void collectSuperMethods();
-		void collectSuperProperties();
-		void addProperty(const Property* property);
-		void addMethod(const Method* method);
-
-	private:
-		size_t mTypeHash;
-		const char* mName = nullptr;
-		std::string mFullName;
-		const TypeInfo* mSuper = nullptr;
-
-		bool mIsArray = false;
-
-		std::vector<const Method*> mMethods;
-		std::map<std::string_view, const Method*> mMethodMap;
-
-		std::vector<const Property*> mProperties;
-		std::map<std::string_view, const Property*> mPropertyMap;
-	};
+	}
 
 	template <typename T> requires HasStaticTypeInfo<T>
-	const TypeInfo& TypeInfo::GetStaticTypeInfo() {
+	static const TypeInfo& GetStaticTypeInfo()
+	{
 		return T::StaticTypeInfo();
 	}
 
 	template <typename T> requires std::is_pointer_v<T>&& HasStaticTypeInfo<std::remove_pointer_t<T>>
-	const TypeInfo& TypeInfo::GetStaticTypeInfo()
+	static const TypeInfo& GetStaticTypeInfo()
 	{
-		return std::remove_pointer_t<T>::StaticTypeInfo()
+		return std::remove_pointer_t<T>::StaticTypeInfo();
 	}
-
 	template <typename T> requires (!HasStaticTypeInfo<T>) && (!HasStaticTypeInfo<std::remove_pointer_t<T>>)
-		const TypeInfo& TypeInfo::GetStaticTypeInfo()
+		static const TypeInfo& GetStaticTypeInfo()
 	{
 		static TypeInfo typeInfo{ TypeInfoInitializer<T>("unreflected type variable") };
 		return typeInfo;
 	}
 
+	bool IsA(const TypeInfo& other) const
+	{
+		if (this == &other)
+		{
+			return true;
+		}
+
+		return mTypeHash == other.mTypeHash;
+	}
 	template <typename T>
-	bool TypeInfo::IsA() const
+	bool IsA() const
 	{
 		return IsA(GetStaticTypeInfo<T>());
 	}
-}
+
+	bool IsChildOf(const TypeInfo& other) const
+	{
+		if (IsA(other))
+		{
+			return true;
+		}
+
+		for (const TypeInfo* superOrNull = mSuper; superOrNull != nullptr; superOrNull = superOrNull->GetSuperOrNull())
+		{
+			assert(superOrNull != nullptr);
+			if (superOrNull->IsA(other))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+	template <typename T>
+	bool IsChildOf() const
+	{
+		return IsChildOf(GetStaticTypeInfo<T>());
+	}
+
+	inline const std::vector<const Method*>& GetMethods() const
+	{
+		return mMethods;
+	}
+	inline const Method* GetMethod(const char* name) const
+	{
+		auto iter = mMethodMap.find(name);
+		return (iter == mMethodMap.end()) ? nullptr : iter->second;
+	}
+
+	inline const std::vector<const Property*>& GetProperties() const
+	{
+		return mProperties;
+	}
+	inline const Property* GetProperty(const char* name) const
+	{
+		auto iter = mPropertyMap.find(name);
+		return (iter == mPropertyMap.end()) ? nullptr : iter->second;
+	}
+
+	inline const TypeInfo* GetSuperOrNull() const
+	{
+		return mSuper;
+	}
+
+	const char* GetName() const
+	{
+		return mName;
+	}
+
+	inline bool IsArray() const
+	{
+		return mIsArray;
+	}
+
+private:
+	void addMethod(const Method* method);
+	void addProperty(const Property* property);
+	void collectSuperMethods();
+	void collectSuperProperties();
+
+private:
+	size_t mTypeHash;
+	const char* mName = nullptr;
+	std::string mFullName;
+	const TypeInfo* mSuper = nullptr;
+
+	bool mIsArray = false;
+
+	std::vector<const Method*> mMethods;
+	std::map<std::string_view, const Method*> mMethodMap;
+
+	std::vector<const Property*> mProperties;
+	std::map<std::string_view, const Property*> mPropertyMap;
+};

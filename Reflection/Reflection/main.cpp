@@ -1,26 +1,122 @@
 ﻿#include <type_traits>
+#include <cassert>
+#include "TypeInfo.h"
+#include "Property.h"
 
-struct Typename
+template <typename To, typename From>
+To* Cast(From* src)
 {
-	using ElementType = std::remove_all_extents_t<T>; // 배열이면 base 타입 남김
+	if (src == nullptr)
+	{
+		return nullptr;
+	}
+	if (!src->GetTypeInfo().IsChildOf<To>())
+	{
+		return nullptr;
+	}
+
+	return reinterpret_cast<To*>(src);
+}
+
+class Component
+{
+	GENERATE_CLASS_TYPE_INFO(Component)
+public:
+	virtual ~Component() {}
+
+private:
 };
 
-#define MemberName(name) Typename<decltype(name)>
+class AComponent : public Component
+{
+	GENERATE_CLASS_TYPE_INFO(AComponent)
+public:
 
-class A
+private:
+};
+
+class BComponent : public Component
+{
+	GENERATE_CLASS_TYPE_INFO(BComponent)
+public:
+
+private:
+};
+
+class GameObject
 {
 public:
-	int value[3];
+	void AddComponent(Component* comp)
+	{
+		mComponents.push_back(comp);
+	}
+
+
+	template <typename T>
+	T* GetComponentOrNull()
+	{
+		for (Component* comp : mComponents)
+		{
+			if (auto* concrete = Cast<T>(comp))
+			{
+				return concrete;
+			}
+		}
+
+		return nullptr;
+	}
+
+	template <typename T>
+	bool TryGetComponent(T** outComp)
+	{
+		for (Component* comp : mComponents)
+		{
+			if (auto* concrete = Cast<T>(comp))
+			{
+				*outComp = concrete;
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+private:
+	std::vector<Component*> mComponents;
 };
 
-// 타입을 뭐로부터 얻어야하는가?
-// 스트링으로 저장된 타입으로부터 어떻게 /
-// 형식은 컴파일 타임에 있는데.. 구체 타입을 런타임에 문자열로 얻어올 방법이 있을까? 라는 생각이드는데요?
 
 int main()
 {
-	A a;
-	MemberName(a.value)::ElementType b = 42; // int 타입이 추론됨
+	{
+		GameObject gameObject;
+		AComponent aComp;
+		BComponent bComp;
+
+		gameObject.AddComponent(&aComp);
+		gameObject.AddComponent(&bComp);
+
+		AComponent* aCompPtr = nullptr;
+		BComponent* bCompPtr = nullptr;
+		assert(gameObject.TryGetComponent(&aCompPtr));
+		assert(gameObject.TryGetComponent(&bCompPtr));
+		assert(&aComp == aCompPtr);
+		assert(&bComp == bCompPtr);
+	}
+
+	{
+		GameObject gameObject;
+		AComponent aComp;
+
+		gameObject.AddComponent(&aComp);
+
+		AComponent* aCompPtr = nullptr;
+		BComponent* bCompPtr = nullptr;
+		assert(gameObject.TryGetComponent(&aCompPtr));
+		assert(gameObject.TryGetComponent(&bCompPtr) == false);
+		assert(&aComp == aCompPtr);
+		assert(bCompPtr == nullptr);
+	}
 
 	return 0;
 }
