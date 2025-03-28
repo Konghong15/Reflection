@@ -132,8 +132,10 @@
     <ClCompile Include="TypeInfo.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="GameObject.h" />
     <ClInclude Include="Method.h" />
     <ClInclude Include="Property.h" />
+    <ClInclude Include="ReflectionMacros.h" />
     <ClInclude Include="TypeInfo.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
