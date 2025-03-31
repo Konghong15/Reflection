@@ -2,10 +2,21 @@
 
 #include <cassert>
 #include <string>
-#include "TypeInfo.h"
-#include "ReflectionMacros.h"
 
-// 범용적인 참조를 위한 베이스 핸들러
+#include "TypeInfo.h"
+
+// -- 매크로
+#define PROPERTY(Name) \
+	inline static struct RegistPropertyExecutor_##Name \
+	{ \
+		RegistPropertyExecutor_##Name() \
+		{ \
+			static PropertyRegister<ThisType, decltype(Name), decltype(&ThisType::Name), &ThisType::##Name> property_register_##Name{ #Name, ThisType::StaticTypeInfo() }; \
+		} \
+	} regist_##Name; \
+
+
+	// 범용적인 참조를 위한 베이스 핸들러
 class PropertyHandlerBase
 {
 	GENERATE_CLASS_TYPE_INFO(PropertyHandlerBase)

@@ -8,12 +8,37 @@
 #include <vector>
 #include <cassert>
 
-#include "ReflectionMacros.h"
-
 // -- 전방선언 --
 class Method;
 class Property;
 class TypeInfo;
+
+// -- 매크로 -- 
+#define GENERATE_CLASS_TYPE_INFO(TypeName) \
+private: \
+	friend SuperClassTypeDeduction; \
+	friend TypeInfoInitializer; \
+\
+public: \
+	using Super = typename SuperClassTypeDeduction<TypeName>::Type; \
+	using ThisType = TypeName; \
+\
+	static TypeInfo& StaticTypeInfo() \
+	{ \
+			static TypeInfo typeInfo { TypeInfoInitializer<ThisType>(#TypeName)}; \
+			return typeInfo; \
+	} \
+\
+	virtual const TypeInfo& GetTypeInfo() const \
+	{ \
+		return mTypeInfo; \
+	} \
+\
+private: \
+	inline static TypeInfo& mTypeInfo = StaticTypeInfo(); \
+\
+private: \
+
 
 template <typename T>
 concept HasSuper = requires

@@ -5,6 +5,17 @@
 
 #include "TypeInfo.h"
 
+#define METHOD( Name )	\
+	inline static struct RegistMethodExecutor_##Name	\
+	{	\
+		RegistMethodExecutor_##Name()	\
+		{	\
+			static MethodRegister<ThisType, decltype(&ThisType::Name), &ThisType::Name> method_register_##Name{ #Name, ThisType::StaticTypeInfo() };	\
+		}	\
+		\
+	} regist_##Name;
+
+
 class CallableBase
 {
 	GENERATE_CLASS_TYPE_INFO(CallableBase)
@@ -50,6 +61,25 @@ private:
 };
 
 template <typename TClass, typename TRet, typename... TArgs>
+class ConstCallable : public ICallable<TRet, TArgs...>
+{
+	using FuncPtr = TRet(TClass::*)(TArgs...) const;
+public:
+	ConstCallable(FuncPtr ptr) : mPtr(ptr) {}
+
+	virtual TRet Invoke(void* caller, TArgs&&... args) const override {
+		if constexpr (std::same_as<TRet, void>)
+			(static_cast<const TClass*>(caller)->*mPtr)(std::forward<TArgs>(args)...);
+		else
+			return (static_cast<const TClass*>(caller)->*mPtr)(std::forward<TArgs>(args)...);
+	}
+
+private:
+	FuncPtr mPtr = nullptr;
+};
+
+
+template <typename TClass, typename TRet, typename... TArgs>
 class StaticCallable : public ICallable<TRet, TArgs...>
 {
 	GENERATE_CLASS_TYPE_INFO(StaticCallable)
@@ -85,7 +115,7 @@ public:
 		mCallable(callable)
 	{
 		collectFunctionSignature<TRet, TArgs...>();
-		owner.AddMethod(this);
+		owner.addMethod(this);
 	}
 
 	template <typename TClass, typename TRet, typename... TArgs>
@@ -94,7 +124,16 @@ public:
 		mCallable(callable)
 	{
 		collectFunctionSignature<TRet, TArgs...>();
-		owner.AddMethod(this);
+		owner.addMethod(this);
+	}
+
+	template <typename TClass, typename TRet, typename... TArgs>
+	Method(TypeInfo& owner, [[maybe_unused]] TRet(TClass::* ptr)(TArgs...) const, const char* name, const CallableBase& callable) :
+		mName(name),
+		mCallable(callable)
+	{
+		collectFunctionSignature<TRet, TArgs...>();
+		owner.addMethod(this);
 	}
 
 	template <typename TClass, typename TRet, typename... TArgs>
@@ -138,7 +177,10 @@ public:
 	template <typename TRet, typename... TArgs>
 	TRet Invoke(void* owner, TArgs&&... args) const
 	{
-		if (mCallable.GetTypeInfo().IsChildOf<ICallable<TRet, TArgs...>>())
+		const TypeInfo& typeInfo = mCallable.GetTypeInfo();
+		const TypeInfo& otherTypeInfo = TypeInfo::GetStaticTypeInfo<ICallable<TRet, TArgs... >>();
+
+		if (typeInfo.IsChildOf(otherTypeInfo))
 		{
 			auto concreateCallable = static_cast<const ICallable<TRet, TArgs...>*>(&mCallable);
 			if constexpr (std::same_as<TRet, void>)
@@ -197,6 +239,12 @@ private:
 	const CallableBase& mCallable;
 };
 
+template <typename T>
+struct is_const_member_function : std::false_type {};
+
+template <typename Ret, typename Class, typename... Args>
+struct is_const_member_function<Ret(Class::*)(Args...) const> : std::true_type {};
+
 template <typename TClass, typename TPtr, TPtr ptr>
 class MethodRegister
 {
@@ -205,8 +253,16 @@ public:
 	{
 		if constexpr (std::is_member_function_pointer_v<TPtr>)
 		{
-			static Callable callable(ptr);
-			static Method method(typeInfo, ptr, name, callable);
+			if constexpr (is_const_member_function<TPtr>::value)
+			{
+				static ConstCallable callable(ptr);
+				static Method method(typeInfo, ptr, name, callable);
+			}
+			else
+			{
+				static Callable callable(ptr);
+				static Method method(typeInfo, ptr, name, callable);
+			}
 		}
 		else
 		{
