@@ -40,8 +40,9 @@ class Callable : public ICallable<TRet, TArgs...>
 		using FuncPtr = TRet(TClass::*)(TArgs...);
 
 public:
-	Callable(FuncPtr ptr) :
-		mPtr(ptr) {
+	Callable(FuncPtr ptr)
+		: mPtr(ptr)
+	{
 	}
 
 	virtual TRet Invoke(void* caller, TArgs&&... args) const override
@@ -65,7 +66,10 @@ class ConstCallable : public ICallable<TRet, TArgs...>
 {
 	using FuncPtr = TRet(TClass::*)(TArgs...) const;
 public:
-	ConstCallable(FuncPtr ptr) : mPtr(ptr) {}
+	ConstCallable(FuncPtr ptr)
+		: mPtr(ptr)
+	{
+	}
 
 	virtual TRet Invoke(void* caller, TArgs&&... args) const override {
 		if constexpr (std::same_as<TRet, void>)

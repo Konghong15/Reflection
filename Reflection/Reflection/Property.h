@@ -22,6 +22,7 @@ class PropertyHandlerBase
 	GENERATE_CLASS_TYPE_INFO(PropertyHandlerBase)
 
 public:
+	virtual void Mark
 	virtual ~PropertyHandlerBase() = default;
 };
 
@@ -281,6 +282,11 @@ public:
 	const TypeInfo& GetTypeInfo() const
 	{
 		return mType;
+	}
+
+	bool IsPointer() const 
+	{
+		return mType.IsPointer();
 	}
 
 private:

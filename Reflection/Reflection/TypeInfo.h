@@ -68,7 +68,7 @@ struct SuperClassTypeDeduction<T, std::void_t<typename T::ThisType>>
 template <typename T>
 struct TypeInfoInitializer
 {
-	TypeInfoInitializer(const char* name)
+	TypeInfoInitializer(const std::string& name)
 		: mName(name)
 	{
 		if constexpr (HasSuper<T>)
@@ -77,9 +77,30 @@ struct TypeInfoInitializer
 		}
 	}
 
-	const char* mName = nullptr;
+	const std::string mName = nullptr;
 	const TypeInfo* mSuper = nullptr;
 };
+
+template <typename T>
+constexpr const char* PrettyTypeName()
+{
+	return __FUNCSIG__;
+}
+
+template <typename T>
+std::string ExtractTypeName()
+{
+	std::string_view sig = PrettyTypeName<T>();
+
+	// MSVC는 "PrettyTypeName<...>" 안에 타입이 들어있음
+	auto start = sig.find("PrettyTypeName<") + strlen("PrettyTypeName<");
+	auto end = sig.find(">(void)");
+
+	if (start == std::string_view::npos || end == std::string_view::npos || end <= start)
+		return std::string(sig); // fallback
+
+	return std::string(sig.substr(start, end - start));
+}
 
 class TypeInfo
 {
@@ -95,6 +116,7 @@ public:
 		, mFullName(typeid(T).name())
 		, mSuper(initializer.mSuper)
 		, mIsArray(std::is_array_v<T>)
+		, mIsPointer(std::is_pointer_v<T>)
 	{
 		if constexpr (HasSuper<T>)
 		{
@@ -114,12 +136,17 @@ public:
 	{
 		return std::remove_pointer_t<T>::StaticTypeInfo();
 	}
+
 	template <typename T> requires (!HasStaticTypeInfo<T>) && (!HasStaticTypeInfo<std::remove_pointer_t<T>>)
-	static const TypeInfo& GetStaticTypeInfo()
+		static const TypeInfo& GetStaticTypeInfo()
 	{
-		static TypeInfo typeInfo{ TypeInfoInitializer<T>("unreflected type variable") };
+		static TypeInfo typeInfo{ TypeInfoInitializer<T>(ExtractTypeName<T>()) };
 		return typeInfo;
 	}
+
+	void PrintProperties(int indent = 0) const;
+	void PrintPropertiesRecursive(int indent = 0) const;
+	void PrintMethods(int indent = 0) const;
 
 	bool IsA(const TypeInfo& other) const
 	{
@@ -154,6 +181,7 @@ public:
 
 		return false;
 	}
+
 	template <typename T>
 	bool IsChildOf() const
 	{
@@ -185,7 +213,7 @@ public:
 		return mSuper;
 	}
 
-	const char* GetName() const
+	const std::string GetName() const
 	{
 		return mName;
 	}
@@ -193,6 +221,11 @@ public:
 	inline bool IsArray() const
 	{
 		return mIsArray;
+	}
+
+	inline bool IsPointer() const
+	{
+		return mIsPointer;
 	}
 
 private:
@@ -203,11 +236,12 @@ private:
 
 private:
 	size_t mTypeHash;
-	const char* mName = nullptr;
+	const std::string mName;
 	std::string mFullName;
 	const TypeInfo* mSuper = nullptr;
 
-	bool mIsArray = false;
+	bool mIsArray;
+	bool mIsPointer;
 
 	std::vector<const Method*> mMethods;
 	std::map<std::string_view, const Method*> mMethodMap;

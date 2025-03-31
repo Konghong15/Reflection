@@ -128,10 +128,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="GCManager.cpp" />
+    <ClCompile Include="GCObject.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="TypeInfo.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="GCUtility.h" />
+    <ClInclude Include="IndexPoolArray.h" />
+    <ClInclude Include="GCManager.h" />
+    <ClInclude Include="GCObject.h" />
     <ClInclude Include="Method.h" />
     <ClInclude Include="Property.h" />
     <ClInclude Include="TypeInfo.h" />

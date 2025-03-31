@@ -1,6 +1,16 @@
 ﻿#include <cassert>
 #include <iostream>
+#include <vector>
 
+#ifdef _DEBUG
+#include <crtdbg.h>
+#define _CRTDBG_MAP_ALLOC
+#endif
+
+
+#include "GCManager.h"
+#include "GCObject.h"
+#include "GCUtility.h"
 #include "TypeInfo.h"
 #include "Property.h"
 #include "Method.h"
@@ -87,6 +97,15 @@ public:
 private:
 	PROPERTY(mPosition)
 		Vector3 mPosition;
+
+	PROPERTY(mScale)
+		Vector3 mScale;
+
+	PROPERTY(mRotation)
+		Vector3 mRotation;
+
+	PROPERTY(mNums)
+		std::vector<int> mNums;
 };
 
 class GameObject
@@ -131,16 +150,53 @@ private:
 	std::vector<Component*> mComponents;
 };
 
+class TempObject : public GCObject
+{
+	GENERATE_CLASS_TYPE_INFO(TempObject)
+public:
+
+private:
+};
+
+class GameInstance : public GCObject
+{
+	GENERATE_CLASS_TYPE_INFO(GameInstance)
+public:
+	void CreateTenThousandObjects()
+	{
+		mGCObjects.reserve(10000);
+		for (int i = 0; i < 10000; ++i)
+		{
+			mGCObjects.push_back(NewGCObject<TempObject>());
+		}
+	}
+
+	void ReleaseTenThousandObjects()
+	{
+		std::fill(mGCObjects.begin(), mGCObjects.end(), nullptr);
+	}
+
+private:
+	PROPERTY(mGCObjects)
+		std::vector<GCObject*> mGCObjects;
+};
+
 
 void TestMethod(void);
 void TestTypeInfo(void);
 void TestProperty(void);
+void PrintFunction(void);
+void PrintProperty(void);
+void CollectGarbage(void);
 
 int main()
 {
 	TestTypeInfo();
 	TestProperty();
 	TestMethod();
+	PrintProperty();
+	PrintFunction();
+	CollectGarbage();
 
 	return 0;
 }
@@ -259,5 +315,69 @@ void TestMethod(void)
 			assert(FloatEqual(pos.y, 20.f));
 			assert(FloatEqual(pos.z, 30.f));
 		}
+	}
+}
+
+void PrintPropertiesRecursive(const TypeInfo& typeInfo, int indent = 0)
+{
+	for (const Property* property : typeInfo.GetProperties())
+	{
+		std::string indentStr(indent * 2, ' ');
+		std::cout
+			<< indentStr
+			<< "Type: " << property->GetTypeInfo().GetName()
+			<< ", Name: " << property->GetName()
+			<< std::endl;
+
+		const TypeInfo& propType = property->GetTypeInfo();
+
+		// 사용자 정의 타입이면 재귀적으로 탐색
+		if (!propType.GetProperties().empty()) // <- 이걸 TypeInfo에 정의해 두는 걸 추천
+		{
+			PrintPropertiesRecursive(propType, indent + 1);
+		}
+	}
+}
+
+
+void PrintProperty(void)
+{
+	{
+		const Vector3 INIT_POS = { 0, 20, 30 };
+		TransformComponent transform(INIT_POS);
+
+		const TypeInfo& typeInfo = transform.GetTypeInfo();
+		typeInfo.PrintProperties();
+		typeInfo.PrintPropertiesRecursive();
+	}
+}
+
+void PrintFunction(void)
+{
+	{
+		const Vector3 INIT_POS = { 0, 20, 30 };
+		TransformComponent transform(INIT_POS);
+
+		const TypeInfo& typeInfo = transform.GetTypeInfo();
+		typeInfo.PrintMethods();
+	}
+}
+
+void CollectGarbage(void)
+{
+
+	{
+		GameInstance* gameInstance = NewGCObject<GameInstance>();
+		GCManager::Get().AddRoot(gameInstance);
+
+#ifdef _DEBUG
+		// 메모리 릭 감지 시작
+		_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+#endif
+		const TypeInfo& typeInfo = gameInstance->GetTypeInfo();
+		
+		gameInstance->CreateTenThousandObjects();
+		gameInstance->ReleaseTenThousandObjects();
+		GCManager::Get().Collect();
 	}
 }
