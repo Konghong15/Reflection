@@ -76,7 +76,7 @@ public:
 	TransformComponent(const Vector3& position) : mPosition(position) {}
 
 	METHOD(GetPosition)
-		const Vector3& GetPosition() { return mPosition; }
+		const Vector3& GetPosition() const { return mPosition; }
 
 	METHOD(SetPositionVec3)
 		void SetPositionVec3(const Vector3& position) { mPosition = position; }
