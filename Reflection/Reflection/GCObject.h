@@ -17,6 +17,7 @@ public:
 
 private:
 	void mark();
+	void markRecursive(void * object, const Property* property);
 
 	void sertMarked(bool marked)
 	{

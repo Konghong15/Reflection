@@ -78,14 +78,7 @@ public:
 
 	virtual void* GetRawPointer(void* object) const override
 	{
-		if constexpr (std::is_array_v<T>)
-		{
-			return static_cast<void*>(&(static_cast<TClass*>(object)->*mPtr)[0]);
-		}
-		else
-		{
-			return static_cast<void*>(&(static_cast<TClass*>(object)->*mPtr));
-		}
+		return static_cast<void*>(&(static_cast<TClass*>(object)->*mPtr));
 	}
 
 private:
@@ -361,6 +354,11 @@ public:
 	const TypeInfo& GetTypeInfo() const
 	{
 		return mType;
+	}
+
+	void* GetRawPointer(void* object) const
+	{
+		return mHandler.GetRawPointer(object);
 	}
 
 private:

@@ -7,6 +7,7 @@
 #include <typeinfo>
 #include <vector>
 #include <cassert>
+#include <type_traits>
 
 // -- 전방선언 --
 class Method;
@@ -132,10 +133,6 @@ public:
 			collectSuperMethods();
 			collectSuperProperties();
 		}
-		if constexpr(std::is_array_v<T>)
-		{
-
-		}
 	}
 
 	template <typename T> requires HasStaticTypeInfo<T>
@@ -256,6 +253,11 @@ public:
 		return mIsPointer;
 	}
 
+	size_t GetSize() const
+	{
+		return mSize;
+	}
+
 private:
 	void addMethod(const Method* method);
 	void addProperty(const Property* property);
@@ -279,4 +281,5 @@ private:
 
 	const TypeInfo* mElementType = nullptr;
 	size_t mArrayExtent = 0;
+	size_t mSize;
 };

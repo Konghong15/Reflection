@@ -170,7 +170,7 @@ public:
 	{
 		for (int i = 0; i < 10000; ++i)
 		{
-			mGCObjects[i] = NewGCObject<TempObject>();
+			mGCObjects.push_back(NewGCObject<TempObject>());
 		}
 	}
 
@@ -185,7 +185,7 @@ public:
 private:
 	enum { OBJECT_COUNT = 10000 };
 	PROPERTY(mGCObjects)
-	GCObject* mGCObjects[OBJECT_COUNT];
+	FixedVector<GCObject*, OBJECT_COUNT> mGCObjects;
 };
 
 void TestMethod(void);
