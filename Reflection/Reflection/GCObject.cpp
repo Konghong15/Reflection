@@ -4,16 +4,17 @@
 
 void GCObject::mark()
 {
+	if (mMarked)
+	{
+		return;
+	}
+
+	mMarked = true;
+
 	const TypeInfo& typeInfo = GetTypeInfo();
 
 	for (const Property* property : typeInfo.GetProperties())
 	{
-		if (mMarked)
-		{
-			return;
-		}
-
-		mMarked = true;
 		const TypeInfo& propertyTypeInfo = property->GetTypeInfo();
 		
 		if (propertyTypeInfo.IsArray() && propertyTypeInfo.GetElementType()->IsChildOf<GCObject>())

@@ -243,9 +243,17 @@ public:
 	template <typename T>
 	ReturnValueWrapper<T> Get(void* object, size_t index) const
 	{
-		const TypeInfo& typeInfo = mHandler.GetTypeInfo();
+		const TypeInfo* registedElementType = mType.GetElementType();
 
-		if (typeInfo.IsChildOf<IPropertyHandler<T>>())
+		if (registedElementType == nullptr)
+		{
+			assert(false && "Property::Get<T> - invalid casting");
+			return {};
+		}
+
+		const TypeInfo& elementType = TypeInfo::GetStaticTypeInfo<T>();
+
+		if (registedElementType->IsA(elementType))
 		{
 			auto concreteHandler = static_cast<const IPropertyHandler<T>*>(&mHandler);
 			return ReturnValueWrapper(concreteHandler->Get(object, index));
@@ -388,6 +396,15 @@ class PropertyRegister
 public:
 	PropertyRegister(const char* name, TypeInfo& typeInfo)
 	{
+		using ElementType = std::remove_all_extents_t<T>;
+
+		std::cout << "[Registering Property] "
+			<< "Class: " << typeid(TClass).name()
+			<< ", Member Type: " << typeid(T).name()
+			<< ", ElementType: " << typeid(ElementType).name()
+			<< ", Name: " << name
+			<< std::endl;
+
 		if constexpr (std::is_member_pointer_v<TPtr>)
 		{
 			// non-static

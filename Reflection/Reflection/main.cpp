@@ -96,19 +96,19 @@ public:
 
 private:
 	PROPERTY(mPosition)
-		Vector3 mPosition;
+	Vector3 mPosition;
 
 	PROPERTY(mScale)
-		Vector3 mScale;
+	Vector3 mScale;
 
 	PROPERTY(mRotation)
-		Vector3 mRotation;
+	Vector3 mRotation;
 
 	PROPERTY(mNums)
-		std::vector<int> mNums;
+	std::vector<int> mNums;
 
 	PROPERTY(mNum)
-		float mNum;
+	float mNum;
 };
 
 class GameObject
@@ -185,7 +185,7 @@ public:
 private:
 	enum { OBJECT_COUNT = 10000 };
 	PROPERTY(mGCObjects)
-		GCObject* mGCObjects[OBJECT_COUNT];
+	GCObject* mGCObjects[OBJECT_COUNT];
 };
 
 void TestMethod(void);
@@ -278,6 +278,25 @@ void TestProperty(void)
 			assert(FloatEqual(pos.y, TEST_POS.y));
 			assert(FloatEqual(pos.z, TEST_POS.z));
 		}
+	}
+	{
+		FixedVector<int, 10> nums;
+
+		for (size_t i = 0; i < 10; ++i)
+		{
+			nums.push_back(i);
+		}
+
+		const auto& typeInfo = nums.GetTypeInfo();
+		for (const auto& property : typeInfo.GetProperties())
+		{
+			property->Print(&nums, 0);
+		}
+
+		const auto numArray = typeInfo.GetProperty("mData");
+
+		int& num3 = numArray->Get<int>(&nums, 3);
+
 	}
 }
 
@@ -383,6 +402,7 @@ void CollectGarbage(void)
 		const TypeInfo& typeInfo = gameInstance->GetTypeInfo();
 
 		gameInstance->CreateTenThousandObjects();
+		GCManager::Get().Collect();
 		gameInstance->ReleaseTenThousandObjects();
 		GCManager::Get().Collect();
 	}

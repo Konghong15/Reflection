@@ -132,6 +132,10 @@ public:
 			collectSuperMethods();
 			collectSuperProperties();
 		}
+		if constexpr(std::is_array_v<T>)
+		{
+
+		}
 	}
 
 	template <typename T> requires HasStaticTypeInfo<T>
