@@ -134,11 +134,14 @@
     <ClCompile Include="TypeInfo.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="FixedVector.h" />
     <ClInclude Include="GCUtility.h" />
     <ClInclude Include="IndexPoolArray.h" />
     <ClInclude Include="GCManager.h" />
     <ClInclude Include="GCObject.h" />
+    <ClInclude Include="IPrintable.h" />
     <ClInclude Include="Method.h" />
+    <ClInclude Include="PrimitivePrintable.h" />
     <ClInclude Include="Property.h" />
     <ClInclude Include="TypeInfo.h" />
   </ItemGroup>

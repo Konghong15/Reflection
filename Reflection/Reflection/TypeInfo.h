@@ -75,10 +75,17 @@ struct TypeInfoInitializer
 		{
 			mSuper = &(typename T::Super::StaticTypeInfo());
 		}
+
+		if constexpr (std::is_array_v<T>)
+		{
+			using ElementType = std::remove_all_extents_t<T>;
+			mElementType = &TypeInfo::template GetStaticTypeInfo<ElementType>();
+		}
 	}
 
 	const std::string mName = nullptr;
 	const TypeInfo* mSuper = nullptr;
+	const TypeInfo* mElementType = nullptr;
 };
 
 template <typename T>
@@ -117,6 +124,8 @@ public:
 		, mSuper(initializer.mSuper)
 		, mIsArray(std::is_array_v<T>)
 		, mIsPointer(std::is_pointer_v<T>)
+		, mArrayExtent(std::extent_v<T>)
+		, mElementType(initializer.mElementType)
 	{
 		if constexpr (HasSuper<T>)
 		{
@@ -143,6 +152,8 @@ public:
 		static TypeInfo typeInfo{ TypeInfoInitializer<T>(ExtractTypeName<T>()) };
 		return typeInfo;
 	}
+
+	void PrintObject(void* object, int indent = 0, bool recursive = false) const;
 
 	void PrintProperties(int indent = 0) const;
 	void PrintPropertiesRecursive(int indent = 0) const;
@@ -223,6 +234,19 @@ public:
 		return mIsArray;
 	}
 
+	bool HasElementType() const {
+		return mElementType != nullptr;
+	}
+
+	const TypeInfo* GetElementType() const {
+		return mElementType;
+	}
+
+	size_t GetArrayExtent() const
+	{
+		return mArrayExtent;
+	}
+
 	inline bool IsPointer() const
 	{
 		return mIsPointer;
@@ -248,4 +272,7 @@ private:
 
 	std::vector<const Property*> mProperties;
 	std::map<std::string_view, const Property*> mPropertyMap;
+
+	const TypeInfo* mElementType = nullptr;
+	size_t mArrayExtent = 0;
 };

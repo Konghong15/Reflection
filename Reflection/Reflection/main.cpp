@@ -7,7 +7,7 @@
 #define _CRTDBG_MAP_ALLOC
 #endif
 
-
+#include "FixedVector.h"
 #include "GCManager.h"
 #include "GCObject.h"
 #include "GCUtility.h"
@@ -83,7 +83,7 @@ class TransformComponent : public Component
 
 public:
 	TransformComponent() = default;
-	TransformComponent(const Vector3& position) : mPosition(position) {}
+	TransformComponent(const Vector3& position) : mPosition(position), mNum(20.123f) {}
 
 	METHOD(GetPosition)
 		const Vector3& GetPosition() const { return mPosition; }
@@ -106,6 +106,9 @@ private:
 
 	PROPERTY(mNums)
 		std::vector<int> mNums;
+
+	PROPERTY(mNum)
+		float mNum;
 };
 
 class GameObject
@@ -161,26 +164,29 @@ private:
 class GameInstance : public GCObject
 {
 	GENERATE_CLASS_TYPE_INFO(GameInstance)
+
 public:
 	void CreateTenThousandObjects()
 	{
-		mGCObjects.reserve(10000);
 		for (int i = 0; i < 10000; ++i)
 		{
-			mGCObjects.push_back(NewGCObject<TempObject>());
+			mGCObjects[i] = NewGCObject<TempObject>();
 		}
 	}
 
 	void ReleaseTenThousandObjects()
 	{
-		std::fill(mGCObjects.begin(), mGCObjects.end(), nullptr);
+		for (size_t i = 0; i < OBJECT_COUNT; ++i)
+		{
+			mGCObjects[i] = nullptr;
+		}
 	}
 
 private:
+	enum { OBJECT_COUNT = 10000 };
 	PROPERTY(mGCObjects)
-		std::vector<GCObject*> mGCObjects;
+		GCObject* mGCObjects[OBJECT_COUNT];
 };
-
 
 void TestMethod(void);
 void TestTypeInfo(void);
@@ -191,6 +197,15 @@ void CollectGarbage(void);
 
 int main()
 {
+	FixedVector<int, 10> nums;
+	FixedVector<int, 20> nums2;
+	std::cout << typeid(FixedVector<int, 10>::ThisType).name();
+
+	auto typeInfo = nums.GetTypeInfo();
+	auto typeInfo2 = nums2.GetTypeInfo();
+	assert(!typeInfo.IsA(typeInfo2));
+	std::cout << PrettyTypeName<std::vector<int>>() << std::endl;
+
 	TestTypeInfo();
 	TestProperty();
 	TestMethod();
@@ -316,39 +331,30 @@ void TestMethod(void)
 			assert(FloatEqual(pos.z, 30.f));
 		}
 	}
-}
-
-void PrintPropertiesRecursive(const TypeInfo& typeInfo, int indent = 0)
-{
-	for (const Property* property : typeInfo.GetProperties())
 	{
-		std::string indentStr(indent * 2, ' ');
-		std::cout
-			<< indentStr
-			<< "Type: " << property->GetTypeInfo().GetName()
-			<< ", Name: " << property->GetName()
-			<< std::endl;
+		const int num = 20;
+		FixedVector<int, 10> fixedVector;
 
-		const TypeInfo& propType = property->GetTypeInfo();
+		const auto& typeInfo = fixedVector.GetTypeInfo();
+		const Method* push_back = typeInfo.GetMethod("push_back");
 
-		// 사용자 정의 타입이면 재귀적으로 탐색
-		if (!propType.GetProperties().empty()) // <- 이걸 TypeInfo에 정의해 두는 걸 추천
+		if (push_back != nullptr)
 		{
-			PrintPropertiesRecursive(propType, indent + 1);
+			push_back->Invoke<void>(&fixedVector, num);
 		}
 	}
 }
-
 
 void PrintProperty(void)
 {
 	{
 		const Vector3 INIT_POS = { 0, 20, 30 };
 		TransformComponent transform(INIT_POS);
-
 		const TypeInfo& typeInfo = transform.GetTypeInfo();
+
 		typeInfo.PrintProperties();
 		typeInfo.PrintPropertiesRecursive();
+		typeInfo.PrintObject(&transform);
 	}
 }
 
@@ -375,7 +381,7 @@ void CollectGarbage(void)
 		_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif
 		const TypeInfo& typeInfo = gameInstance->GetTypeInfo();
-		
+
 		gameInstance->CreateTenThousandObjects();
 		gameInstance->ReleaseTenThousandObjects();
 		GCManager::Get().Collect();

@@ -4,6 +4,15 @@
 #include "Property.h"
 #include "Method.h"
 
+void TypeInfo::PrintObject(void* object, int indent, bool recursive) const
+{
+	for (const Property* property : GetProperties())
+	{
+		property->Print(object, indent);
+		const TypeInfo& propType = property->GetTypeInfo();
+	}
+}
+
 void TypeInfo::PrintProperties(int indent) const
 {
 	std::string indentStr(indent * 4, ' ');
@@ -15,8 +24,6 @@ void TypeInfo::PrintProperties(int indent) const
 			<< "Type: " << property->GetTypeInfo().GetName()
 			<< ", Name: " << property->GetName()
 			<< std::endl;
-
-		const TypeInfo& propType = property->GetTypeInfo();
 	}
 }
 

@@ -1,5 +1,6 @@
 #include "GCObject.h"
 #include "GCManager.h"
+#include "GCUtility.h"
 
 void GCObject::mark()
 {
@@ -13,8 +14,20 @@ void GCObject::mark()
 		}
 
 		mMarked = true;
-
 		const TypeInfo& propertyTypeInfo = property->GetTypeInfo();
+		
+		if (propertyTypeInfo.IsArray() && propertyTypeInfo.GetElementType()->IsChildOf<GCObject>())
+		{
+			for (size_t i = 0; i < propertyTypeInfo.GetArrayExtent(); ++i)
+			{
+				GCObject* neighbor = property->Get<GCObject*>(this, i);
+
+				if (neighbor != nullptr)
+				{
+					neighbor->mark();
+				}
+			}
+		}
 
 		if (!propertyTypeInfo.IsPointer())
 		{
