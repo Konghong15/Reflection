@@ -22,19 +22,25 @@
     <Filter Include="헤더 파일\GarbageCollection">
       <UniqueIdentifier>{86e5b222-43ef-4285-a039-07d4d24d52a0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="소스 파일\GarbageCollection">
+      <UniqueIdentifier>{eb11d3a8-881b-462c-9b58-52d78f909ab2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\Reflection">
+      <UniqueIdentifier>{9c5b691b-ce6b-409e-97f1-aeed20be5aed}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="TypeInfo.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="GCManager.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>소스 파일\GarbageCollection</Filter>
     </ClCompile>
     <ClCompile Include="GCObject.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>소스 파일\GarbageCollection</Filter>
+    </ClCompile>
+    <ClCompile Include="TypeInfo.cpp">
+      <Filter>소스 파일\Reflection</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -61,6 +67,9 @@
     </ClInclude>
     <ClInclude Include="Procedure.h">
       <Filter>헤더 파일\Reflection</Filter>
+    </ClInclude>
+    <ClInclude Include="ThreadPool.h">
+      <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

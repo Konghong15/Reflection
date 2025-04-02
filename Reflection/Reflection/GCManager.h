@@ -3,6 +3,7 @@
 #include <unordered_set>
 
 #include "FixedVector.h"
+#include "ThreadPool.h"
 
 class GCObject;
 
@@ -72,4 +73,5 @@ private:
 	enum { POOL_SIZE = 1024 * 128 };
 	FixedVector<GCObject*, POOL_SIZE> mGCObjects;
 	GCDebugInfo mLastDebugInfo;
+	ThreadPool mThreadPool;
 };

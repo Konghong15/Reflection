@@ -1,17 +1,18 @@
-﻿#include <cassert>
+﻿#define _CRTDBG_MAP_ALLOC
+#include <crtdbg.h>
+#include <cassert>
 #include <iostream>
 #include <vector>
-#include <ostream>
 #include <string>
 
 #include "FixedVector.h"
 #include "GCManager.h"
 #include "GCUtility.h"
+#include "GCObject.h"
 #include "TypeInfo.h"
 #include "Property.h"
 #include "Method.h"
 #include "Procedure.h"
-#include "TestClass.h"
 
 void TestTypeInfo(void);
 void TestProperty(void);
@@ -21,6 +22,8 @@ void TestRPC(void);
 
 int main()
 {
+	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+
 	GCManager::Create();
 
 	TestTypeInfo();
@@ -30,11 +33,11 @@ int main()
 	TestRPC();
 
 	GCManager::Destroy();
-
 	return 0;
 }
 
 bool FloatEqual(float a, float b, float epsilon = 1e-6f) {
+
 	return std::fabs(a - b) < epsilon;
 }
 
@@ -224,7 +227,18 @@ void TestCG(void)
 	assert(lastInfo.RootObjectCount == 10);
 	assert(lastInfo.DeletedObjects == 100000);
 
-	// 3. 루트 제거 테스트
+	// 3. 멀티 스레드 테스트
+	for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
+	{
+		gameInstances[i]->CreateTenThousandObjects();
+		gameInstances[i]->ReleaseTenThousandObjects();
+	}
+
+	GCManager::Get().CollectMultiThread();
+	assert(lastInfo.RootObjectCount == 10);
+	assert(lastInfo.DeletedObjects == 100000);
+
+	// 4. 루트 제거 테스트
 	for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
 	{
 		gameInstances[i]->SetRoot(false);

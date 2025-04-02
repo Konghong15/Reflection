@@ -141,6 +141,7 @@
     <ClInclude Include="Method.h" />
     <ClInclude Include="Procedure.h" />
     <ClInclude Include="Property.h" />
+    <ClInclude Include="ThreadPool.h" />
     <ClInclude Include="TypeInfo.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
