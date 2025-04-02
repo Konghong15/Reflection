@@ -138,69 +138,60 @@ public:
 		owner.addMethod(this);
 	}
 
-	template <typename TClass, typename TRet, typename... TArgs>
+	template <typename TRet, typename... TArgs>
 	TRet Invoke(void* caller, TArgs&&... args) const
 	{
-		const TypeInfo& typeinfo = mCallable.GetTypeInfo();
-		if (typeinfo.IsChildOf<Callable<TClass, TRet, TArgs...>>())
+		const TypeInfo& returnType = TypeInfo::GetStaticTypeInfo<TRet>();
+		if (!returnType.IsChildOf(*mReturnType))
 		{
-			auto concreateCallable = static_cast<const Callable<TClass, TRet, TArgs...>&>(mCallable);
-			if constexpr (std::same_as<TRet, void>)
-			{
-				concreateCallable.Invoke(caller, std::forward<TArgs>(args)...);
-			}
+			std::cerr << "[Method::Invoke] Return type mismatch: expected "
+				<< mReturnType->GetName() << ", got " << returnType.GetName() << std::endl;
+
+			assert(false && "Method::Invoke - Return type mismatch");
+			if constexpr (!std::same_as<TRet, void>)
+				return {};
 			else
+				return;
+		}
+
+		std::vector<const TypeInfo*> callTypes = { &TypeInfo::GetStaticTypeInfo<TArgs>()... };
+
+		if (callTypes.size() != mParameterTypes.size())
+		{
+			std::cerr << "[Method::Invoke] Argument count mismatch: expected "
+				<< mParameterTypes.size() << ", got " << callTypes.size() << std::endl;
+
+			assert(false && "Method::Invoke - Argument count mismatch");
+			if constexpr (!std::same_as<TRet, void>)
+				return {};
+			else
+				return;
+		}
+
+		for (size_t i = 0; i < callTypes.size(); ++i)
+		{
+			if (!callTypes[i]->IsChildOf(*mParameterTypes[i]))
 			{
-				return concreateCallable.Invoke(caller, std::forward<TArgs>(args)...);
+				std::cerr << "[Method::Invoke] Type mismatch at arg #" << i
+					<< ": expected " << mParameterTypes[i]->GetName()
+					<< ", got " << callTypes[i]->GetName() << std::endl;
+
+				assert(false && "Method::Invoke - Argument type mismatch");
+				if constexpr (!std::same_as<TRet, void>)
+					return {};
+				else
+					return;
 			}
 		}
-		else if (typeinfo.IsChildOf<StaticCallable<TClass, TRet, TArgs...>>())
+
+		auto* concrete = static_cast<const ICallable<TRet, TArgs...>*>(&mCallable);
+		if constexpr (std::same_as<TRet, void>)
 		{
-			auto concreateCallable = static_cast<const StaticCallable<TClass, TRet, TArgs...>&>(mCallable);
-			if constexpr (std::same_as<TRet, void>)
-			{
-				concreateCallable.Invoke(caller, std::forward<TArgs>(args)...);
-			}
-			else
-			{
-				return concreateCallable.Invoke(caller, std::forward<TArgs>(args)...);
-			}
+			concrete->Invoke(caller, std::forward<TArgs>(args)...);
 		}
 		else
 		{
-			assert(false && "Method::Invoke<TClass, TRet, TArgs...> - Invalied casting");
-			if constexpr (!std::same_as<TRet, void>)
-			{
-				return {};
-			}
-		}
-	}
-
-	template <typename TRet, typename... TArgs>
-	TRet Invoke(void* owner, TArgs&&... args) const
-	{
-		const TypeInfo& typeInfo = mCallable.GetTypeInfo();
-		const TypeInfo& otherTypeInfo = TypeInfo::GetStaticTypeInfo<ICallable<TRet, TArgs... >>();
-
-		if (typeInfo.IsChildOf(otherTypeInfo))
-		{
-			auto concreateCallable = static_cast<const ICallable<TRet, TArgs...>*>(&mCallable);
-			if constexpr (std::same_as<TRet, void>)
-			{
-				concreateCallable->Invoke(owner, std::forward<TArgs>(args)...);
-			}
-			else
-			{
-				return concreateCallable->Invoke(owner, std::forward<TArgs>(args)...);
-			}
-		}
-		else
-		{
-			assert(false && "Method::Invoke<TRet, TArgs...> - Invalied casting");
-			if constexpr (!std::same_as<TRet, void>)
-			{
-				return {};
-			}
+			return concrete->Invoke(caller, std::forward<TArgs>(args)...);
 		}
 	}
 
@@ -212,6 +203,11 @@ public:
 	const TypeInfo& GetReturnType() const
 	{
 		return *mReturnType;
+	}
+
+	const std::vector<const TypeInfo*>& GetParameterTypes() const
+	{
+		return mParameterTypes;
 	}
 
 	const TypeInfo& GetParameterType(size_t i) const

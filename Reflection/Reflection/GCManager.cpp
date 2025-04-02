@@ -81,3 +81,7 @@ void GCManager::Collect()
 
 	OutputDebugStringA(oss.str().c_str());
 }
+
+void GCManager::CollectMultiThread()
+{
+}

@@ -139,6 +139,7 @@
     <ClInclude Include="GCManager.h" />
     <ClInclude Include="GCObject.h" />
     <ClInclude Include="Method.h" />
+    <ClInclude Include="Procedure.h" />
     <ClInclude Include="Property.h" />
     <ClInclude Include="TypeInfo.h" />
   </ItemGroup>

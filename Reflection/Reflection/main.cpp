@@ -1,164 +1,168 @@
 ﻿#include <cassert>
 #include <iostream>
 #include <vector>
-
-#ifdef _DEBUG
-#include <crtdbg.h>
-#define _CRTDBG_MAP_ALLOC
-#endif
+#include <ostream>
+#include <string>
 
 #include "FixedVector.h"
 #include "GCManager.h"
-#include "GCObject.h"
 #include "GCUtility.h"
 #include "TypeInfo.h"
 #include "Property.h"
 #include "Method.h"
+#include "Procedure.h"
+#include "TestClass.h"
 
-template <typename To, typename From>
-To* Cast(From* src)
+void TestTypeInfo(void);
+void TestProperty(void);
+void TestMethod(void);
+void TestCG(void);
+void TestRPC(void);
+
+int main()
 {
-	if (src == nullptr)
-	{
-		return nullptr;
-	}
-	if (!src->GetTypeInfo().IsChildOf<To>())
-	{
-		return nullptr;
-	}
+	GCManager::Create();
 
-	return reinterpret_cast<To*>(src);
+	TestTypeInfo();
+	TestProperty();
+	TestMethod();
+	TestCG();
+	TestRPC();
+
+	GCManager::Destroy();
+
+	return 0;
 }
 
 bool FloatEqual(float a, float b, float epsilon = 1e-6f) {
 	return std::fabs(a - b) < epsilon;
 }
 
-class Component
+class Animal
 {
-	GENERATE_TYPE_INFO(Component)
+	GENERATE_TYPE_INFO(Animal)
+
 public:
-	virtual ~Component() {}
-
-private:
-};
-
-class AComponent : public Component
-{
-	GENERATE_TYPE_INFO(AComponent)
-public:
-
-private:
-
 
 };
 
-class BComponent : public Component
+class Cat : public Animal
 {
-	GENERATE_TYPE_INFO(BComponent)
-public:
-
-private:
+	GENERATE_TYPE_INFO(Cat)
 };
 
-struct Vector3
+void TestTypeInfo(void)
 {
-	GENERATE_TYPE_INFO(Vector3)
+	// 상속 관계 체크
+	Cat cat;
+	Animal* animalPtr = &cat;
+
+	assert(animalPtr->GetTypeInfo().IsChildOf<Cat>());
+	assert(animalPtr->GetTypeInfo().IsChildOf(Cat::StaticTypeInfo()));
+
+	assert(animalPtr->GetTypeInfo().IsA <Cat>());
+	assert(animalPtr->GetTypeInfo().IsA(Cat::StaticTypeInfo()));
+}
+
+struct Vector2
+{
+	GENERATE_TYPE_INFO(Vector2)
 		PROPERTY(x)
 		PROPERTY(y)
-		PROPERTY(z)
+public:
+	Vector2() = default;
+	Vector2(float inX, float inY) : x(inX), y(inY) {}
 
 public:
-	float x = 0.0f;
-	float y = 0.0f;
-	float z = 0.0f;
+	float x;
+	float y;
 
-	Vector3() = default;
-	Vector3(float x, float y, float z) : x(x), y(y), z(z) {}
+	friend std::ostream& operator<<(std::ostream& os, const Vector2& vec)
+	{
+		os << "Vector2(" << vec.x << ", " << vec.y << ")";
+		return os;
+	}
 };
 
-class TransformComponent : public Component
+void TestProperty(void)
 {
-	GENERATE_TYPE_INFO(TransformComponent)
+	const float INIT_X = 10.f;
+	const float INIT_Y = 20.f;
+	const float SET_X = 30.f;
+	const float SET_Y = 40.f;
 
-public:
-	TransformComponent() = default;
-	TransformComponent(const Vector3& position) : mPosition(position), mNum(20.123f) {}
+	Vector2 vec2;
+	vec2.x = INIT_X;
+	vec2.y = INIT_Y;
 
-	METHOD(GetPosition)
-		const Vector3& GetPosition() const { return mPosition; }
+	assert(vec2.GetTypeInfo().GetProperties().size() == 2);
 
-	METHOD(SetPositionVec3)
-		void SetPositionVec3(const Vector3& position) { mPosition = position; }
+	const Property* propX = vec2.GetTypeInfo().GetProperty("x");
+	assert(propX != nullptr);
+	assert(FloatEqual(propX->Get<float>(&vec2), INIT_X));
 
-	METHOD(SetPositionXYZ)
-		void SetPositionXYZ(float x, float y, float z) { mPosition = Vector3(x, y, z); }
+	const Property* propY = Vector2::StaticTypeInfo().GetProperty("y");
+	assert(FloatEqual(propY->Get<float>(&vec2), INIT_Y));
 
-private:
-	PROPERTY(mPosition)
-		Vector3 mPosition;
+	propX->Set(&vec2, SET_X);
+	assert(FloatEqual(propX->Get<float>(&vec2), SET_X));
+	propY->Set(&vec2, SET_Y);
+	assert(FloatEqual(propY->Get<float>(&vec2), SET_Y));
 
-	PROPERTY(mScale)
-		Vector3 mScale;
+	vec2.GetTypeInfo().PrintObject(&vec2);
+}
 
-	PROPERTY(mRotation)
-		Vector3 mRotation;
-
-	PROPERTY(mNums)
-		std::vector<int> mNums;
-
-	PROPERTY(mNum)
-		float mNum;
-};
-
-class GameObject
+class Person
 {
+	GENERATE_TYPE_INFO(Person)
 public:
-	void AddComponent(Component* comp)
+	Person(const std::string& name)
+		: mName(name)
 	{
-		mComponents.push_back(comp);
 	}
 
-
-	template <typename T>
-	T* GetComponentOrNull()
+	METHOD(GetName)
+		const std::string& GetName() const
 	{
-		for (Component* comp : mComponents)
-		{
-			if (auto* concrete = Cast<T>(comp))
-			{
-				return concrete;
-			}
-		}
-
-		return nullptr;
+		return mName;
 	}
 
-	template <typename T>
-	bool TryGetComponent(T** outComp)
+	METHOD(SetName)
+		void SetName(const std::string& name)
 	{
-		for (Component* comp : mComponents)
-		{
-			if (auto* concrete = Cast<T>(comp))
-			{
-				*outComp = concrete;
-				return true;
-			}
-		}
-
-		return false;
+		mName = name;
 	}
 
 private:
-	std::vector<Component*> mComponents;
+	std::string mName;
 };
+
+void TestMethod(void)
+{
+	const std::string INIT_NAME = "Hong";
+	const std::string SET_NAME = "Kong";
+
+	Person person(INIT_NAME);
+
+	assert(person.GetTypeInfo().GetMethods().size() == 2);
+
+	const Method* getter = person.GetTypeInfo().GetMethod("GetName");
+	assert(getter != nullptr);
+	const std::string& name = getter->Invoke<const std::string&>(&person);
+	assert(name == INIT_NAME);
+
+	const Method* setter = Person::StaticTypeInfo().GetMethod("SetName");
+	assert(setter != nullptr);
+	setter->Invoke<void>(&person, SET_NAME);
+	assert(person.GetName() == SET_NAME);
+
+	Person::StaticTypeInfo().PrintMethods();
+}
 
 class TempObject : public GCObject
 {
 	GENERATE_TYPE_INFO(TempObject)
 public:
-
-private:
 };
 
 class GameInstance : public GCObject
@@ -191,239 +195,115 @@ private:
 		FixedVector<GCObject*, OBJECT_COUNT> mGCObjects;
 };
 
-void TestMethod(void);
-void TestTypeInfo(void);
-void TestProperty(void);
-void PrintFunction(void);
-void PrintProperty(void);
-void CollectGarbage(void);
 
-int main()
+void TestCG(void)
 {
-	GCManager::Create();
+	const size_t TEST_INSTANCE_COUNT = 10;
+	GameInstance* gameInstances[TEST_INSTANCE_COUNT];
+	const GCDebugInfo& lastInfo = GCManager::Get().GetLastDebugInfo();
 
-	TestTypeInfo();
-	TestProperty();
-	TestMethod();
-	PrintProperty();
-	PrintFunction();
-	CollectGarbage();
+	// 1. 아무 처리되지 않는 것 확인
+	for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
+	{
+		gameInstances[i] = NewGCObject<GameInstance>(GCManager::Get());
+		gameInstances[i]->SetRoot(true);
+		gameInstances[i]->CreateTenThousandObjects();
+	}
 
-	GCManager::Destroy();
+	GCManager::Get().Collect();
+	assert(lastInfo.RootObjectCount == 10);
+	assert(lastInfo.DeletedObjects == 0);
 
-	return 0;
+	// 2. 10만개 오브젝트 GC 처리
+	for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
+	{
+		gameInstances[i]->ReleaseTenThousandObjects();
+	}
+
+	GCManager::Get().Collect();
+	assert(lastInfo.RootObjectCount == 10);
+	assert(lastInfo.DeletedObjects == 100000);
+
+	// 3. 루트 제거 테스트
+	for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
+	{
+		gameInstances[i]->SetRoot(false);
+	}
+
+	GCManager::Get().Collect();
+	assert(lastInfo.RootObjectCount == 0);
+	assert(lastInfo.DeletedObjects == 10);
 }
 
-void TestTypeInfo(void)
+class MoveablePerson : public Person
 {
+	GENERATE_TYPE_INFO(MoveablePerson)
+public:
+	MoveablePerson(const std::string& name)
+		: Person(name)
+		, mPos(0, 0)
 	{
-		GameObject gameObject;
-		AComponent aComp;
-		BComponent bComp;
-
-		gameObject.AddComponent(&aComp);
-		gameObject.AddComponent(&bComp);
-
-		AComponent* aCompPtr = nullptr;
-		BComponent* bCompPtr = nullptr;
-		assert(gameObject.TryGetComponent(&aCompPtr));
-		assert(gameObject.TryGetComponent(&bCompPtr));
-		assert(&aComp == aCompPtr);
-		assert(&bComp == bCompPtr);
 	}
 
+	PROCEDURE(MoveXYStatic)
+		static void MoveXYStatic(float x, float y)
 	{
-		GameObject gameObject;
-		AComponent aComp;
-
-		gameObject.AddComponent(&aComp);
-
-		AComponent* aCompPtr = nullptr;
-		BComponent* bCompPtr = nullptr;
-		assert(gameObject.TryGetComponent(&aCompPtr));
-		assert(gameObject.TryGetComponent(&bCompPtr) == false);
-		assert(&aComp == aCompPtr);
-		assert(bCompPtr == nullptr);
+		mPosStatic.x = x;
+		mPosStatic.y = y;
 	}
-}
 
-void TestProperty(void)
+	PROCEDURE(MoveVec)
+		void MoveVec(const Vector2& pos)
+	{
+		mPos = pos;
+	}
+
+	PROCEDURE(MoveXY)
+		void MoveXY(float x, float y)
+	{
+		mPos.x = x;
+		mPos.y = y;
+	}
+
+	const Vector2& GetPos() const
+	{
+		return mPos;
+	}
+
+	PROPERTY(mPosStatic)
+		static Vector2 mPosStatic;
+private:
+	PROPERTY(mPos)
+		Vector2 mPos;
+};
+
+Vector2 MoveablePerson::mPosStatic;
+
+void TestRPC(void)
 {
-	{
-		const Vector3 INIT_POS = { 0, 20, 30 };
-		const Vector3 TEST_POS = { 100, 200, 300 };
+	const Vector2 MOVE_VEC = { 50, 70 };
+	const float MOVE_X = 100.f;
+	const float MOVE_Y = 50.f;
 
-		GameObject gameObject;
-		TransformComponent transform(INIT_POS);
-		gameObject.AddComponent(&transform);
-		Component* component = gameObject.GetComponentOrNull<TransformComponent>();
-		assert(component != nullptr);
+	Vector2::StaticTypeInfo().IsA(MOVE_VEC.GetTypeInfo());
 
-		const TypeInfo& typeInfo = component->GetTypeInfo();
-		const Property* posProperty = typeInfo.GetProperty("mPosition");
+	MoveablePerson moveablePerson("Hong");
+	assert(moveablePerson.GetTypeInfo().GetProcedures().size() == 3);
 
-		if (posProperty != nullptr)
-		{
-			const Vector3& pos = posProperty->Get<TransformComponent, Vector3>(&transform);
-			// const Vector3& pos = posProperty->Get<Vector3>(&transform);
+	const Procedure* moveXY = moveablePerson.GetTypeInfo().GetProcedure("MoveXY");
+	assert(moveXY != nullptr);
+	moveXY->Invoke(&moveablePerson, MOVE_X, MOVE_Y);
+	assert(FloatEqual(moveablePerson.GetPos().x, MOVE_X) && FloatEqual(moveablePerson.GetPos().y, MOVE_Y));
 
-			assert(FloatEqual(pos.x, INIT_POS.x));
-			assert(FloatEqual(pos.y, INIT_POS.y));
-			assert(FloatEqual(pos.z, INIT_POS.z));
+	const Procedure* moveVec = MoveablePerson::StaticTypeInfo().GetProcedure("MoveVec");
+	assert(moveVec != nullptr);
+	moveVec->Invoke(&moveablePerson, MOVE_VEC);
+	assert(FloatEqual(moveablePerson.GetPos().x, MOVE_VEC.x) && FloatEqual(moveablePerson.GetPos().y, MOVE_VEC.y));
 
-			posProperty->Set(component, TEST_POS);
-			assert(FloatEqual(pos.x, TEST_POS.x));
-			assert(FloatEqual(pos.y, TEST_POS.y));
-			assert(FloatEqual(pos.z, TEST_POS.z));
-		}
-	}
-	{
-		FixedVector<int, 10> nums;
+	const Procedure* moveXYStatic = MoveablePerson::StaticTypeInfo().GetProcedure("MoveXYStatic");
+	assert(moveXYStatic != nullptr);
+	moveXYStatic->Invoke(nullptr, MOVE_X, MOVE_Y);
+	assert(FloatEqual(moveablePerson.mPosStatic.x, MOVE_X) && FloatEqual(moveablePerson.mPosStatic.y, MOVE_Y));
 
-		for (size_t i = 0; i < 10; ++i)
-		{
-			nums.Add(i);
-		}
-
-		const auto& typeInfo = nums.GetTypeInfo();
-		for (const auto& property : typeInfo.GetProperties())
-		{
-			property->Print(&nums, 0);
-		}
-
-		const auto numArray = typeInfo.GetProperty("mElements");
-
-		int& num3 = numArray->Get<int>(&nums, 3);
-
-	}
-}
-
-
-void TestMethod(void)
-{
-	{
-		const Vector3 INIT_POS = { 0, 20, 30 };
-		const Vector3 TEST_POS_1 = { 100, 200, 300 };
-		const Vector3 TEST_POS_2 = { 300, 400, 500 };
-
-		GameObject gameObject;
-		TransformComponent transform(INIT_POS);
-		gameObject.AddComponent(&transform);
-		Component* component = gameObject.GetComponentOrNull<TransformComponent>();
-		assert(component != nullptr);
-
-		const TypeInfo& typeInfo = component->GetTypeInfo();
-		const Method* getPosition = typeInfo.GetMethod("GetPosition");
-
-		assert(getPosition != nullptr);
-		if (getPosition != nullptr)
-		{
-			const Vector3& pos = getPosition->Invoke<const Vector3&>(component);
-			assert(FloatEqual(pos.x, INIT_POS.x));
-			assert(FloatEqual(pos.y, INIT_POS.y));
-			assert(FloatEqual(pos.z, INIT_POS.z));
-		}
-
-		const Method* setPositionVec3 = typeInfo.GetMethod("SetPositionVec3");
-
-		assert(setPositionVec3 != nullptr);
-		if (setPositionVec3 != nullptr)
-		{
-			setPositionVec3->Invoke<void>(component, TEST_POS_1);
-			const Vector3& pos = transform.GetPosition();
-			assert(FloatEqual(pos.x, TEST_POS_1.x));
-			assert(FloatEqual(pos.y, TEST_POS_1.y));
-			assert(FloatEqual(pos.z, TEST_POS_1.z));
-		}
-
-		const Method* setPositionXYZ = typeInfo.GetMethod("SetPositionXYZ");
-
-		assert(setPositionXYZ != nullptr);
-		if (setPositionXYZ != nullptr)
-		{
-			setPositionXYZ->Invoke<void>(component, 10.f, 20.f, 30.f);
-			const Vector3& pos = transform.GetPosition();
-			assert(FloatEqual(pos.x, 10.f));
-			assert(FloatEqual(pos.y, 20.f));
-			assert(FloatEqual(pos.z, 30.f));
-		}
-	}
-	{
-		const int num = 20;
-		FixedVector<int, 10> fixedVector;
-
-		const auto& typeInfo = fixedVector.GetTypeInfo();
-		const Method* push_back = typeInfo.GetMethod("push_back");
-
-		if (push_back != nullptr)
-		{
-			push_back->Invoke<void>(&fixedVector, num);
-		}
-	}
-}
-
-void PrintProperty(void)
-{
-	{
-		const Vector3 INIT_POS = { 0, 20, 30 };
-		TransformComponent transform(INIT_POS);
-		const TypeInfo& typeInfo = transform.GetTypeInfo();
-
-		typeInfo.PrintProperties();
-		typeInfo.PrintPropertiesRecursive();
-		typeInfo.PrintObject(&transform);
-	}
-}
-
-void PrintFunction(void)
-{
-	{
-		const Vector3 INIT_POS = { 0, 20, 30 };
-		TransformComponent transform(INIT_POS);
-
-		const TypeInfo& typeInfo = transform.GetTypeInfo();
-		typeInfo.PrintMethods();
-	}
-}
-
-void CollectGarbage(void)
-{
-
-	{
-		const size_t TEST_INSTANCE_COUNT = 10;
-		GameInstance* gameInstances[TEST_INSTANCE_COUNT];
-		const GCDebugInfo& lastInfo = GCManager::Get().GetLastDebugInfo();
-
-		// 1. 아무 처리되지 않는 것 확인
-		for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
-		{
-			gameInstances[i] = NewGCObject<GameInstance>(GCManager::Get());
-			gameInstances[i]->SetRoot(true);
-			gameInstances[i]->CreateTenThousandObjects();
-		}
-
-		GCManager::Get().Collect();
-		assert(lastInfo.RootObjectCount == 10);
-		assert(lastInfo.DeletedObjects == 0);
-
-		// 2. 10만개 오브젝트 GC 처리
-		for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
-		{
-			gameInstances[i]->ReleaseTenThousandObjects();
-		}
-
-		GCManager::Get().Collect();
-		assert(lastInfo.RootObjectCount == 10);
-		assert(lastInfo.DeletedObjects == 100000);
-
-		// 3. 루트 제거 테스트
-		for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
-		{
-			gameInstances[i]->SetRoot(false);
-		}
-
-		GCManager::Get().Collect();
-		assert(lastInfo.RootObjectCount == 0);
-		assert(lastInfo.DeletedObjects == 10);
-	}
+	moveablePerson.GetTypeInfo().PrintProcedures(1);
 }

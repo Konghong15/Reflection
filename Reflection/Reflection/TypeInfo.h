@@ -35,6 +35,7 @@ private: \
 private: \
 
 class Method;
+class Procedure;
 class Property;
 class TypeInfo;
 
@@ -111,6 +112,7 @@ class TypeInfo
 {
 	friend class Method;
 	friend class Property;
+	friend class Procedure;
 
 public:
 	// 왜 생성자에서 initializer를 받을까?
@@ -129,6 +131,7 @@ public:
 		{
 			collectSuperMethods();
 			collectSuperProperties();
+			collectSuperProcedures();
 		}
 	}
 
@@ -156,6 +159,7 @@ public:
 	void PrintProperties(int indent = 0) const;
 	void PrintPropertiesRecursive(int indent = 0) const;
 	void PrintMethods(int indent = 0) const;
+	void PrintProcedures(int indent = 0) const;
 
 	bool IsA(const TypeInfo& other) const
 	{
@@ -205,6 +209,15 @@ public:
 	{
 		auto iter = mMethodMap.find(name);
 		return (iter == mMethodMap.end()) ? nullptr : iter->second;
+	}
+	const std::vector<const Procedure*>& GetProcedures() const
+	{
+		return mProcedures;
+	}
+	const Procedure* GetProcedure(const char* name) const
+	{
+		auto iter = mProcedureMap.find(name);
+		return (iter == mProcedureMap.end()) ? nullptr : iter->second;
 	}
 
 	inline const std::vector<const Property*>& GetProperties() const
@@ -258,8 +271,11 @@ public:
 private:
 	void addMethod(const Method* method);
 	void addProperty(const Property* property);
+	void addProcedure(const Procedure* property);
+
 	void collectSuperMethods();
 	void collectSuperProperties();
+	void collectSuperProcedures();
 
 private:
 	size_t mTypeHash;
@@ -269,6 +285,9 @@ private:
 
 	bool mIsArray;
 	bool mIsPointer;
+
+	std::vector<const Procedure*> mProcedures;
+	std::map<std::string_view, const Procedure*> mProcedureMap;
 
 	std::vector<const Method*> mMethods;
 	std::map<std::string_view, const Method*> mMethodMap;

@@ -1,7 +1,8 @@
+#include <iostream>
+
 #include "GCObject.h"
 #include "GCManager.h"
 #include "GCUtility.h"
-#include <iostream>
 
 void GCObject::mark()
 {

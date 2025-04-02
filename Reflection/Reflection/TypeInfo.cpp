@@ -3,6 +3,7 @@
 #include "TypeInfo.h"
 #include "Property.h"
 #include "Method.h"
+#include "Procedure.h"
 
 void TypeInfo::PrintObject(void* object, int indent, bool recursive) const
 {
@@ -74,6 +75,33 @@ void TypeInfo::PrintMethods(int indent) const
 	}
 }
 
+void TypeInfo::PrintProcedures(int indent) const
+{
+	std::string indentStr(indent * 4, ' ');
+
+	for (const Procedure* proc : mProcedures)
+	{
+		std::cout
+			<< indentStr
+			<< "Procedure: " << proc->GetName();
+
+		size_t paramCount = proc->NumParameter();
+		if (paramCount > 0)
+		{
+			std::cout << " -> Params: (";
+			for (size_t i = 0; i < paramCount; ++i)
+			{
+				std::cout << proc->GetParameterType(i).GetName();
+				if (i + 1 < paramCount)
+					std::cout << ", ";
+			}
+			std::cout << ")";
+		}
+
+		std::cout << std::endl;
+	}
+}
+
 void TypeInfo::addMethod(const Method* method)
 {
 	mMethods.emplace_back(method);
@@ -83,6 +111,11 @@ void TypeInfo::addProperty(const Property* property)
 {
 	mProperties.emplace_back(property);
 	mPropertyMap.emplace(property->GetName(), property);
+}
+void TypeInfo::addProcedure(const Procedure* procedure)
+{
+	mProcedures.push_back(procedure);
+	mProcedureMap[procedure->GetName()] = procedure;
 }
 void TypeInfo::collectSuperMethods()
 {
@@ -100,5 +133,15 @@ void TypeInfo::collectSuperProperties()
 	for (const Property* property : properties)
 	{
 		addProperty(property);
+	}
+}
+void TypeInfo::collectSuperProcedures()
+{
+	if (!mSuper) return;
+
+	for (const Procedure* proc : mSuper->mProcedures)
+	{
+		mProcedures.push_back(proc);
+		mProcedureMap[proc->GetName()] = proc;
 	}
 }

@@ -38,6 +38,7 @@ public:
 
 public:
 	void Collect();
+	void CollectMultiThread();
 
 	void AddObject(GCObject* object)
 	{
