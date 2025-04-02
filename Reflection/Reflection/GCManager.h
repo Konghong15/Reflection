@@ -6,6 +6,16 @@
 
 class GCObject;
 
+struct GCDebugInfo
+{
+	int64_t DurationMs = 0;
+	int64_t DurationUs = 0;
+	size_t TotalObjects = 0;
+	size_t DeletedObjects = 0;
+	size_t RemainingObjects = 0;
+	size_t RootObjectCount = 0;
+};
+
 class GCManager
 {
 public:
@@ -34,6 +44,11 @@ public:
 		mGCObjects.Add(object);
 	}
 
+	const GCDebugInfo& GetLastDebugInfo() const
+	{
+		return mLastDebugInfo;
+	}
+
 private:
 	GCManager() = default;
 	~GCManager()
@@ -53,6 +68,7 @@ private:
 private:
 	static GCManager* mInstance;
 
-	enum { POOL_SIZE = 1024 * 10 };
+	enum { POOL_SIZE = 1024 * 128 };
 	FixedVector<GCObject*, POOL_SIZE> mGCObjects;
+	GCDebugInfo mLastDebugInfo;
 };

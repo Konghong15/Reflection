@@ -392,13 +392,6 @@ public:
 	{
 		using ElementType = std::remove_all_extents_t<T>;
 
-		std::cout << "[Registering Property] "
-			<< "Class: " << typeid(TClass).name()
-			<< ", Member Type: " << typeid(T).name()
-			<< ", ElementType: " << typeid(ElementType).name()
-			<< ", Name: " << name
-			<< std::endl;
-
 		if constexpr (std::is_member_pointer_v<TPtr>)
 		{
 			// non-static

@@ -17,6 +17,7 @@ void GCManager::Collect()
 
 	const size_t OBJECT_COUNT = mGCObjects.GetSize();
 	size_t deletedCount = 0;
+	size_t rootCount = 0;
 
 	// 1. mark
 	std::vector<GCObject*> rootObjects;
@@ -29,6 +30,7 @@ void GCManager::Collect()
 		if (mGCObjects[i]->IsRoot())
 		{
 			rootObjects.push_back(mGCObjects[i]);
+			++rootCount;
 		}
 	}
 	for (GCObject* root : rootObjects)
@@ -57,12 +59,23 @@ void GCManager::Collect()
 	auto endTime = high_resolution_clock::now();
 	auto durationMs = duration_cast<milliseconds>(endTime - startTime).count();
 	auto durationUs = duration_cast<microseconds>(endTime - startTime).count();
-
 	const size_t remaining = mGCObjects.GetSize();
 
+	// 저장
+	mLastDebugInfo = {
+		durationMs,
+		durationUs,
+		OBJECT_COUNT,
+		deletedCount,
+		remaining,
+		rootCount
+	};
+
+	// 출력
 	std::ostringstream oss;
 	oss << "[GC] Time: " << durationMs << " ms (" << durationUs << " μs)\n"
 		<< "[GC] Total objects: " << OBJECT_COUNT << "\n"
+		<< "[GC] Root objects: " << rootCount << "\n"
 		<< "[GC] Deleted objects: " << deletedCount << "\n"
 		<< "[GC] Remaining objects: " << remaining << "\n";
 

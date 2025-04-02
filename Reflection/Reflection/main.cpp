@@ -390,18 +390,40 @@ void CollectGarbage(void)
 {
 
 	{
-		GameInstance* gameInstance = NewGCObject<GameInstance>(GCManager::Get());
-		gameInstance->SetRoot(true);
+		const size_t TEST_INSTANCE_COUNT = 10;
+		GameInstance* gameInstances[TEST_INSTANCE_COUNT];
+		const GCDebugInfo& lastInfo = GCManager::Get().GetLastDebugInfo();
 
-#ifdef _DEBUG
-		// 메모리 릭 감지 시작
-		_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-#endif
-		const TypeInfo& typeInfo = gameInstance->GetTypeInfo();
+		// 1. 아무 처리되지 않는 것 확인
+		for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
+		{
+			gameInstances[i] = NewGCObject<GameInstance>(GCManager::Get());
+			gameInstances[i]->SetRoot(true);
+			gameInstances[i]->CreateTenThousandObjects();
+		}
 
-		gameInstance->CreateTenThousandObjects();
 		GCManager::Get().Collect();
-		gameInstance->ReleaseTenThousandObjects();
+		assert(lastInfo.RootObjectCount == 10);
+		assert(lastInfo.DeletedObjects == 0);
+
+		// 2. 10만개 오브젝트 GC 처리
+		for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
+		{
+			gameInstances[i]->ReleaseTenThousandObjects();
+		}
+
 		GCManager::Get().Collect();
+		assert(lastInfo.RootObjectCount == 10);
+		assert(lastInfo.DeletedObjects == 100000);
+
+		// 3. 루트 제거 테스트
+		for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
+		{
+			gameInstances[i]->SetRoot(false);
+		}
+
+		GCManager::Get().Collect();
+		assert(lastInfo.RootObjectCount == 0);
+		assert(lastInfo.DeletedObjects == 10);
 	}
 }
