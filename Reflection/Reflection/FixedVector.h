@@ -6,60 +6,70 @@
 #include "Property.h"
 #include "Method.h"
 
-template <typename T, size_t N>
+template <typename T, size_t Capacity>
 class FixedVector
 {
-	GENERATE_CLASS_TYPE_INFO(FixedVector)
+	GENERATE_TYPE_INFO(FixedVector)
 
 public:
-	using value_type = T;
-	using size_type = size_t;
+	using ValueType = T;
+	using SizeType = size_t;
 
 	FixedVector()
-		: mSize(0)
-		, mData{}
+		: mElementCount(0)
+		, mElements{}
 	{
 	}
 
-	T& operator[](size_t index)
+	T& operator[](size_t Index)
 	{
-		assert(index < mSize);
-		return mData[index];
+		assert(Index < mElementCount);
+		return mElements[Index];
 	}
 
-	const T& operator[](size_t index) const
+	const T& operator[](size_t Index) const
 	{
-		assert(index < mSize);
-		return mData[index];
+		assert(Index < mElementCount);
+		return mElements[Index];
 	}
 
-	METHOD(push_back)
-		void push_back(const T& value)
+	void Add(const T& Value)
 	{
-		assert(mSize < N && "FixedVector capacity exceeded");
-		mData[mSize++] = value;
+		assert(mElementCount < Capacity && "FixedVector capacity exceeded");
+		mElements[mElementCount++] = Value;
 	}
 
-	void pop_back()
+	void RemoveLast()
 	{
-		assert(mSize > 0 && "FixedVector is empty");
-		--mSize;
+		assert(mElementCount > 0 && "FixedVector is empty");
+		--mElementCount;
 	}
 
-	T& front() { return mData[0]; }
-	const T& front() const { return mData[0]; }
+	void RemoveAtSwapLast(size_t Index)
+	{
+		assert(Index < mElementCount && "Index out of range");
 
-	T& back() { return mData[mSize - 1]; }
-	const T& back() const { return mData[mSize - 1]; }
+		if (Index != mElementCount - 1)
+		{
+			std::swap(mElements[Index], mElements[mElementCount - 1]);
+		}
+		--mElementCount;
+	}
 
-	size_t size() const { return mSize; }
-	constexpr size_t capacity() const { return N; }
-	bool empty() const { return mSize == 0; }
+	T& First() { return mElements[0]; }
+	const T& First() const { return mElements[0]; }
+
+	T& Last() { return mElements[mElementCount - 1]; }
+	const T& Last() const { return mElements[mElementCount - 1]; }
+
+	size_t GetSize() const { return mElementCount; }
+	constexpr size_t GetCapacity() const { return Capacity; }
+	bool IsEmpty() const { return mElementCount == 0; }
 
 private:
-	PROPERTY(mData)
-		T mData[N];
+	PROPERTY(mElements)
+		T mElements[Capacity];
 
-	PROPERTY(mSize)
-		size_t mSize;
+	PROPERTY(mElementCount)
+		size_t mElementCount;
 };

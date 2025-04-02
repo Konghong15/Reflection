@@ -2,45 +2,57 @@
 
 #include <unordered_set>
 
-#include "IndexPoolArray.h"
+#include "FixedVector.h"
 
 class GCObject;
 
 class GCManager
 {
 public:
+	static void Create()
+	{
+		mInstance = new GCManager();
+	}
+
 	static GCManager& Get()
 	{
-		static GCManager instance;
-		return instance;
+		assert(mInstance != nullptr);
+		return *mInstance;
 	}
 
+	static void Destroy()
+	{
+		delete mInstance;
+		mInstance = nullptr;
+	}
+
+public:
 	void Collect();
-	void ClearMark();
-	void Mark();
-	void Sweep();
-
-	void AddRoot(GCObject* object)
-	{
-		mRoots.insert(object);
-	}
-	void RemoveRoot(GCObject* object)
-	{
-		mRoots.erase(object);
-	}
 
 	void AddObject(GCObject* object)
 	{
-		mIndexPoolArray.Add(object);
+		mGCObjects.Add(object);
 	}
 
 private:
 	GCManager() = default;
+	~GCManager()
+	{
+		const size_t OBJECT_COUNT = mGCObjects.GetSize();
+
+		for (int i = static_cast<int>(OBJECT_COUNT) - 1; i >= 0; --i)
+		{
+			delete mGCObjects[i];
+			mGCObjects[i] = nullptr;
+			mGCObjects.RemoveLast();
+		}
+	}
 	GCManager(const GCManager&) = delete;
 	GCManager& operator=(const GCManager&) = delete;
 
 private:
+	static GCManager* mInstance;
+
 	enum { POOL_SIZE = 1024 * 10 };
-	IndexPoolArray<GCObject*, POOL_SIZE> mIndexPoolArray;
-	std::unordered_set<GCObject*> mRoots;
+	FixedVector<GCObject*, POOL_SIZE> mGCObjects;
 };

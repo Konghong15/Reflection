@@ -1,12 +1,10 @@
 #pragma once
 
 #include <cassert>
-#include <string>
 #include <iostream>
 
 #include "TypeInfo.h"
 
-// -- 매크로
 #define PROPERTY(Name) \
 	inline static struct RegistPropertyExecutor_##Name \
 	{ \
@@ -16,11 +14,10 @@
 		} \
 	} regist_##Name; \
 
-
-	// 범용적인 참조를 위한 베이스 핸들러
+// 범용적인 참조를 위한 베이스 핸들러
 class PropertyHandlerBase
 {
-	GENERATE_CLASS_TYPE_INFO(PropertyHandlerBase)
+	GENERATE_TYPE_INFO(PropertyHandlerBase)
 
 public:
 	virtual ~PropertyHandlerBase() = default;
@@ -32,7 +29,7 @@ public:
 template <typename T>
 class IPropertyHandler : public PropertyHandlerBase
 {
-	GENERATE_CLASS_TYPE_INFO(IPropertyHandler)
+	GENERATE_TYPE_INFO(IPropertyHandler)
 		using ElementType = std::remove_all_extents_t<T>; // T 타입으로 전달된 것의 타입을 캡쳐해버림
 
 public:
@@ -44,7 +41,7 @@ public:
 template <typename TClass, typename T>
 class PropertyHandler : public IPropertyHandler<T>
 {
-	GENERATE_CLASS_TYPE_INFO(PropertyHandler)
+	GENERATE_TYPE_INFO(PropertyHandler)
 		using MemberPtr = T TClass::*; // 객체를 포인터로 들고 있기 위한 포인터 자료형 정의
 	using ElementType = std::remove_all_extents_t<T>; // T 타입으로 전달된 것의 타입을 캡쳐해버림
 
@@ -104,7 +101,7 @@ private:
 template <typename TClass, typename T>
 class StaticPropertyHandler : public IPropertyHandler<T>
 {
-	GENERATE_CLASS_TYPE_INFO(StaticPropertyHandler)
+	GENERATE_TYPE_INFO(StaticPropertyHandler)
 		using ElementType = std::remove_all_extents_t<T>; // 배열에서 base 타입만 남겨줌
 
 public:
@@ -375,17 +372,16 @@ concept OstreamWritable = requires(std::ostream & os, T value) {
 	{ os << value } -> std::same_as<std::ostream&>;
 };
 
-template <OstreamWritable T>
+template <typename T>
 void Print(void* object)
 {
-	T* value = static_cast<T*>(object);
-	std::cout << ", Value : " << *value;
-}
-
-template <typename T>
-void Print(void*)
-{
-	std::cout << ", Value : None ";
+	if constexpr (OstreamWritable<T>) {
+		T* value = static_cast<T*>(object);
+		std::cout << ", Value : " << *value;
+	}
+	else {
+		std::cout << ", Value : None ";
+	}
 }
 
 template <typename TClass, typename T, typename TPtr, TPtr ptr>

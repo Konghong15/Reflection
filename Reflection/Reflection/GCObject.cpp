@@ -1,6 +1,7 @@
 #include "GCObject.h"
 #include "GCManager.h"
 #include "GCUtility.h"
+#include <iostream>
 
 void GCObject::mark()
 {
@@ -20,7 +21,7 @@ void GCObject::mark()
 
 void GCObject::markRecursive(void* object, const Property* property)
 {
-	// 마킹을 함
+	// 1. 마킹 처리
 	const TypeInfo& typeInfo = property->GetTypeInfo();
 
 	if (typeInfo.IsPointer() && typeInfo.IsChildOf<GCObject>())
@@ -36,16 +37,15 @@ void GCObject::markRecursive(void* object, const Property* property)
 		for (size_t i = 0; i < END; ++i)
 		{
 			GCObject* gcObject = gcObjectArray[i];
-			gcObject->sertMarked(true);
+
+			if (gcObject != nullptr)
+			{
+				gcObject->sertMarked(true);
+			}
 		}
 	}
 
-	// 자식 프로퍼티를 리컬시브함
-	if (typeInfo.GetProperties().empty())
-	{
-		return;
-	}
-
+	// 2. 재귀 처리
 	for (const Property* property : typeInfo.GetProperties())
 	{
 		void* propPtr = property->GetRawPointer(object);

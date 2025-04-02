@@ -36,7 +36,7 @@ bool FloatEqual(float a, float b, float epsilon = 1e-6f) {
 
 class Component
 {
-	GENERATE_CLASS_TYPE_INFO(Component)
+	GENERATE_TYPE_INFO(Component)
 public:
 	virtual ~Component() {}
 
@@ -45,7 +45,7 @@ private:
 
 class AComponent : public Component
 {
-	GENERATE_CLASS_TYPE_INFO(AComponent)
+	GENERATE_TYPE_INFO(AComponent)
 public:
 
 private:
@@ -55,7 +55,7 @@ private:
 
 class BComponent : public Component
 {
-	GENERATE_CLASS_TYPE_INFO(BComponent)
+	GENERATE_TYPE_INFO(BComponent)
 public:
 
 private:
@@ -63,7 +63,7 @@ private:
 
 struct Vector3
 {
-	GENERATE_CLASS_TYPE_INFO(Vector3)
+	GENERATE_TYPE_INFO(Vector3)
 		PROPERTY(x)
 		PROPERTY(y)
 		PROPERTY(z)
@@ -79,7 +79,7 @@ public:
 
 class TransformComponent : public Component
 {
-	GENERATE_CLASS_TYPE_INFO(TransformComponent)
+	GENERATE_TYPE_INFO(TransformComponent)
 
 public:
 	TransformComponent() = default;
@@ -96,19 +96,19 @@ public:
 
 private:
 	PROPERTY(mPosition)
-	Vector3 mPosition;
+		Vector3 mPosition;
 
 	PROPERTY(mScale)
-	Vector3 mScale;
+		Vector3 mScale;
 
 	PROPERTY(mRotation)
-	Vector3 mRotation;
+		Vector3 mRotation;
 
 	PROPERTY(mNums)
-	std::vector<int> mNums;
+		std::vector<int> mNums;
 
 	PROPERTY(mNum)
-	float mNum;
+		float mNum;
 };
 
 class GameObject
@@ -155,7 +155,7 @@ private:
 
 class TempObject : public GCObject
 {
-	GENERATE_CLASS_TYPE_INFO(TempObject)
+	GENERATE_TYPE_INFO(TempObject)
 public:
 
 private:
@@ -163,29 +163,32 @@ private:
 
 class GameInstance : public GCObject
 {
-	GENERATE_CLASS_TYPE_INFO(GameInstance)
+	GENERATE_TYPE_INFO(GameInstance)
 
 public:
 	void CreateTenThousandObjects()
 	{
-		for (int i = 0; i < 10000; ++i)
+		for (int i = 0; i < OBJECT_COUNT; ++i)
 		{
-			mGCObjects.push_back(NewGCObject<TempObject>());
+			mGCObjects.Add(NewGCObject<TempObject>(GCManager::Get()));
 		}
 	}
 
 	void ReleaseTenThousandObjects()
 	{
-		for (size_t i = 0; i < OBJECT_COUNT; ++i)
+		const size_t SIZE = mGCObjects.GetSize();
+
+		for (int i = static_cast<int>(SIZE) - 1; i >= 0; --i)
 		{
 			mGCObjects[i] = nullptr;
+			mGCObjects.RemoveLast();
 		}
 	}
 
 private:
 	enum { OBJECT_COUNT = 10000 };
 	PROPERTY(mGCObjects)
-	FixedVector<GCObject*, OBJECT_COUNT> mGCObjects;
+		FixedVector<GCObject*, OBJECT_COUNT> mGCObjects;
 };
 
 void TestMethod(void);
@@ -197,14 +200,7 @@ void CollectGarbage(void);
 
 int main()
 {
-	FixedVector<int, 10> nums;
-	FixedVector<int, 20> nums2;
-	std::cout << typeid(FixedVector<int, 10>::ThisType).name();
-
-	auto typeInfo = nums.GetTypeInfo();
-	auto typeInfo2 = nums2.GetTypeInfo();
-	assert(!typeInfo.IsA(typeInfo2));
-	std::cout << PrettyTypeName<std::vector<int>>() << std::endl;
+	GCManager::Create();
 
 	TestTypeInfo();
 	TestProperty();
@@ -212,6 +208,8 @@ int main()
 	PrintProperty();
 	PrintFunction();
 	CollectGarbage();
+
+	GCManager::Destroy();
 
 	return 0;
 }
@@ -284,7 +282,7 @@ void TestProperty(void)
 
 		for (size_t i = 0; i < 10; ++i)
 		{
-			nums.push_back(i);
+			nums.Add(i);
 		}
 
 		const auto& typeInfo = nums.GetTypeInfo();
@@ -293,7 +291,7 @@ void TestProperty(void)
 			property->Print(&nums, 0);
 		}
 
-		const auto numArray = typeInfo.GetProperty("mData");
+		const auto numArray = typeInfo.GetProperty("mElements");
 
 		int& num3 = numArray->Get<int>(&nums, 3);
 
@@ -392,8 +390,8 @@ void CollectGarbage(void)
 {
 
 	{
-		GameInstance* gameInstance = NewGCObject<GameInstance>();
-		GCManager::Get().AddRoot(gameInstance);
+		GameInstance* gameInstance = NewGCObject<GameInstance>(GCManager::Get());
+		gameInstance->SetRoot(true);
 
 #ifdef _DEBUG
 		// 메모리 릭 감지 시작

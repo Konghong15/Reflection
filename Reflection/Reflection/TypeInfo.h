@@ -1,21 +1,15 @@
 #pragma once
 
+#include <cassert>
 #include <concepts>
 #include <map>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <typeinfo>
 #include <vector>
-#include <cassert>
-#include <type_traits>
 
-// -- 전방선언 --
-class Method;
-class Property;
-class TypeInfo;
-
-// -- 매크로 -- 
-#define GENERATE_CLASS_TYPE_INFO(TypeName) \
+#define GENERATE_TYPE_INFO(TypeName) \
 private: \
 	friend SuperClassTypeDeduction; \
 	friend TypeInfoInitializer; \
@@ -40,6 +34,9 @@ private: \
 \
 private: \
 
+class Method;
+class Property;
+class TypeInfo;
 
 template <typename T>
 concept HasSuper = requires

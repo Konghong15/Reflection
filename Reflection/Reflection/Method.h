@@ -15,10 +15,9 @@
 		\
 	} regist_##Name;
 
-
 class CallableBase
 {
-	GENERATE_CLASS_TYPE_INFO(CallableBase)
+	GENERATE_TYPE_INFO(CallableBase)
 
 public:
 	virtual ~CallableBase() = default;
@@ -27,7 +26,7 @@ public:
 template <typename TRet, typename... TArgs>
 class ICallable : public CallableBase
 {
-	GENERATE_CLASS_TYPE_INFO(ICallable)
+	GENERATE_TYPE_INFO(ICallable)
 
 public:
 	virtual TRet Invoke(void* caller, TArgs&&... args) const = 0;
@@ -36,7 +35,7 @@ public:
 template <typename TClass, typename TRet, typename... TArgs>
 class Callable : public ICallable<TRet, TArgs...>
 {
-	GENERATE_CLASS_TYPE_INFO(Callable)
+	GENERATE_TYPE_INFO(Callable)
 		using FuncPtr = TRet(TClass::*)(TArgs...);
 
 public:
@@ -82,11 +81,10 @@ private:
 	FuncPtr mPtr = nullptr;
 };
 
-
 template <typename TClass, typename TRet, typename... TArgs>
 class StaticCallable : public ICallable<TRet, TArgs...>
 {
-	GENERATE_CLASS_TYPE_INFO(StaticCallable)
+	GENERATE_TYPE_INFO(StaticCallable)
 		using FuncPtr = TRet(*)(TArgs...);
 
 public:

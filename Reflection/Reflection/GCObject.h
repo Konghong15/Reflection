@@ -4,16 +4,27 @@
 
 class GCObject
 {
-	GENERATE_CLASS_TYPE_INFO(GCObject)
+	GENERATE_TYPE_INFO(GCObject)
 
 		friend class GCManager;
 
 public:
 	GCObject()
-		: mMarked(false)
+		: mbMarked(false)
+		, mbRoot(false)
 	{
 	}
 	virtual ~GCObject() = default;
+
+	void SetRoot(bool root)
+	{
+		mbRoot = root;
+	}
+
+	bool IsRoot() const
+	{
+		return mbRoot;
+	}
 
 private:
 	void mark();
@@ -21,14 +32,15 @@ private:
 
 	void sertMarked(bool marked)
 	{
-		mMarked = marked;
+		mbMarked = marked;
 	}
 
 	bool isMarked() const
 	{
-		return mMarked;
+		return mbMarked;
 	}
 
 private:
-	bool mMarked;
+	bool mbMarked;
+	bool mbRoot;
 };
