@@ -99,3 +99,14 @@
   문자열 기반 호출 정보와 인자를 전달하여 런타임에 함수를 실행할 수 있습니다.
 - 현재는 네트워크 연동 기능은 구현되어 있지 않아,  
   원격 호출 처리는 미지원 상태입니다.
+
+---
+
+## 📚 참고 자료
+
+리플렉션 시스템과 관련된 개념 및 구현에 참고한 자료들입니다.
+
+- [A Primitive Reflection System in C++ (Part 1) – Preshing](https://preshing.com/20180116/a-primitive-reflection-system-in-cpp-part-1/)  
+- [A Flexible Reflection System in C++ (Part 2) – Preshing](https://preshing.com/20180124/a-flexible-reflection-system-in-cpp-part-2/)  
+- [[2019]언리얼 엔진을 통해 살펴보는 리플렉션과 가비지 컬렉션](https://www.youtube.com/watch?v=VpEe9DbcZIs)  
+- [슬라이드쉐어: C++20 메타프로그래밍과 리플렉션 개념 정리](https://www.slideshare.net/slideshow/c20-251161090/251161090)  
