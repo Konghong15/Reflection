@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <memory>
 
 #include "TypeInfo.h"
 
@@ -141,6 +142,94 @@ private:
 	T* mPtr = nullptr;
 };
 
+class IteratorWrapperBase
+{
+	GENERATE_TYPE_INFO(IteratorWrapperBase)
+
+public:
+	virtual ~IteratorWrapperBase() = default;
+	virtual void Increment() = 0;
+	virtual void* Dereference() const = 0;
+	virtual bool operator==(const IteratorWrapperBase& other) const = 0;
+	virtual bool operator!=(const IteratorWrapperBase& other) const = 0;
+};
+
+template <typename Iter>
+class IteratorWrapper : public IteratorWrapperBase
+{
+	GENERATE_TYPE_INFO(IteratorWrapper)
+
+public:
+	IteratorWrapper(Iter it)
+		: mIt(it)
+	{
+	}
+	void Increment() override
+	{
+		++mIt;
+	}
+	void* Dereference() const override
+	{
+		return (void*)&(*mIt);
+	}
+
+	bool operator==(const IteratorWrapperBase& other) const override
+	{
+		if (const auto* otherTyped = dynamic_cast<const IteratorWrapper<Iter>*>(&other))
+		{
+			return mIt == otherTyped->mIt;
+		}
+		return false;
+	}
+
+	bool operator!=(const IteratorWrapperBase& other) const override
+	{
+		return !(*this == other);
+	}
+
+private:
+	Iter mIt;
+};
+
+class BaseIteratorHandler
+{
+	GENERATE_TYPE_INFO(BaseIteratorHandler)
+
+public:
+	virtual ~BaseIteratorHandler() = default;
+	virtual std::unique_ptr<IteratorWrapperBase> Begin(void* object) const = 0;
+	virtual std::unique_ptr<IteratorWrapperBase> End(void* object) const = 0;
+};
+
+template <typename T>
+class TemplateIteratorHandler : public BaseIteratorHandler
+{
+	GENERATE_TYPE_INFO(TemplateIteratorHandler)
+
+public:
+	using Iterator = decltype(std::declval<T>().begin());
+
+	std::unique_ptr<IteratorWrapperBase> Begin(void* object) const override
+	{
+		if (!object)
+		{
+			return nullptr;
+		}
+
+		return std::make_unique<IteratorWrapper<Iterator>>(static_cast<T*>(object)->begin());
+	}
+
+	std::unique_ptr<IteratorWrapperBase> End(void* object) const override
+	{
+		if (!object)
+		{
+			return nullptr;
+		}
+
+		return std::make_unique<IteratorWrapper<Iterator>>(static_cast<T*>(object)->end());
+	}
+};
+
 using PrintFuncPtr = void(*)(void*);
 
 struct PropertyInitializer
@@ -238,13 +327,50 @@ public:
 		concreteHandler->Set(object, value, index);
 	}
 
+	template <typename T>
+	std::unique_ptr<IteratorWrapperBase> CreateIteratorBegin(void* object) const
+	{
+		if (!HasIterator())
+		{
+			assert(false && "Property::CreateIteratorBegin<T> - not iterable");
+			return nullptr;
+		}
+		if (!mType.GetIteratorElementType()->IsA<T>())
+		{
+			assert(false && "Property::CreateIteratorBegin<T> - mismatched element type");
+			return nullptr;
+		}
+
+		return mIteratorHandler->Begin(object);
+	}
+
+	template <typename T>
+	std::unique_ptr<IteratorWrapperBase> CreateIteratorEnd(void* object) const
+	{
+		if (!HasIterator())
+		{
+			assert(false && "Property::CreateIteratorEnd<T> - not iterable");
+			return nullptr;
+		}
+		if (!mType.GetIteratorElementType()->IsA<T>())
+		{
+			assert(false && "Property::CreateIteratorEnd<T> - mismatched element type");
+			return nullptr;
+		}
+
+		return mIteratorHandler->End(object);
+	}
+
 	inline void PrintPropertyValue(void* object, int indent) const;
 	inline void PrintProperty(int indent) const;
 
 	inline const char* GetName() const;
 	inline const TypeInfo& GetTypeInfo() const;
 	inline void* GetRawPointer(void* object) const;
-	
+
+	inline void SetIteratorHandler(BaseIteratorHandler* handler) { mIteratorHandler = handler; }
+	inline bool HasIterator() const { return mIteratorHandler != nullptr; }
+
 private:
 	using PrintFuncPtr = void(*)(void*);
 
@@ -252,6 +378,7 @@ private:
 	const TypeInfo& mType;
 	const PropertyHandlerBase& mHandler;
 	PrintFuncPtr mPrintFunc = nullptr;
+	BaseIteratorHandler* mIteratorHandler = nullptr;
 };
 
 inline void Property::PrintPropertyValue(void* object, int indent) const
@@ -325,12 +452,23 @@ public:
 			static PropertyInitializer initializer = { .mName = name, .mType = TypeInfo::GetStaticTypeInfo<T>(), .mHandler = handler, .mPrintFunc = &Print<T> };
 			static Property property(typeInfo, initializer);
 
+			if constexpr (IsIterable<T>::value)
+			{
+				static TemplateIteratorHandler<T> iterHandler;
+				property.SetIteratorHandler(&iterHandler);
+			}
 		}
 		else
 		{
 			static StaticPropertyHandler<TClass, T> handler(ptr);
 			static PropertyInitializer initializer = { .mName = name, .mType = TypeInfo::GetStaticTypeInfo<T>(), .mHandler = handler, .mPrintFunc = &Print<T> };
 			static Property property(typeInfo, initializer);
+
+			if constexpr (IsIterable<T>::value)
+			{
+				static TemplateIteratorHandler<T> iterHandler;
+				property.SetIteratorHandler(&iterHandler);
+			}
 		}
 	}
 };

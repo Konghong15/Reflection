@@ -51,8 +51,14 @@ void GCManager::Collect()
 
 	for (int i = static_cast<int>(OBJECT_COUNT) - 1; i >= 0; --i)
 	{
-		if (mGCObjects[i]->IsRoot()) continue;
-		if (mGCObjects[i]->isMarked()) continue;
+		if (mGCObjects[i]->IsRoot())
+		{
+			continue;
+		}
+		if (mGCObjects[i]->isMarked())
+		{
+			continue;
+		}
 
 		delete mGCObjects[i];
 		mGCObjects[i] = nullptr;

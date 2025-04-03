@@ -63,6 +63,21 @@ struct SuperClassTypeDeduction<T, std::void_t<typename T::ThisType>>
 	using Type = T::ThisType;
 };
 
+template <typename T, typename = void>
+struct IsIterable : std::false_type {};
+
+template <typename T>
+struct IsIterable<T, std::void_t<
+	decltype(std::declval<T>().begin()),
+	decltype(std::declval<T>().end())
+	>> : std::true_type {};
+
+template <typename T, typename = void>
+struct HasValueType : std::false_type {};
+
+template <typename T>
+struct HasValueType<T, std::void_t<typename T::value_type>> : std::true_type {};
+
 template <typename T>
 struct TypeInfoInitializer
 {
@@ -78,12 +93,21 @@ struct TypeInfoInitializer
 			using ElementType = std::remove_all_extents_t<T>;
 			mElementType = &TypeInfo::template GetStaticTypeInfo<ElementType>();
 		}
+		if constexpr (IsIterable<T>::value && HasValueType<T>::value)
+		{
+			mIsIterable = true;
+			using ElementType = typename T::value_type;
+			mIteratorElementType = &TypeInfo::template GetStaticTypeInfo<ElementType>();
+		}
 	}
 
 	const std::string mName = nullptr;
 	const TypeInfo* mSuper = nullptr;
 	const TypeInfo* mElementType = nullptr;
+	bool mIsIterable = false;
+	const TypeInfo* mIteratorElementType = nullptr;
 };
+
 
 // T 타입으로부터 이름 추출
 template <typename T>
@@ -117,6 +141,8 @@ public:
 		, mIsPointer(std::is_pointer_v<T>)
 		, mArrayExtent(std::extent_v<T>)
 		, mElementType(initializer.mElementType)
+		, mIsIterable(initializer.mIsIterable)
+		, mIteratorElementType(initializer.mIteratorElementType)
 	{
 		if constexpr (HasSuper<T>)
 		{
@@ -184,6 +210,9 @@ public:
 	inline bool IsPointer() const;
 	inline size_t GetSize() const;
 
+	inline bool IsIterable() const { return mIsIterable; }
+	inline const TypeInfo* GetIteratorElementType() const { return mIteratorElementType; }
+
 private:
 	void addMethod(const Method* method);
 	void addProperty(const Property* property);
@@ -214,6 +243,9 @@ private:
 	const TypeInfo* mElementType = nullptr;
 	size_t mArrayExtent = 0;
 	size_t mSize;
+
+	bool mIsIterable = false;
+	const TypeInfo* mIteratorElementType = nullptr;
 };
 
 inline bool TypeInfo::IsA(const TypeInfo& other) const

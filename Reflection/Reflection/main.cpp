@@ -17,7 +17,7 @@
 void TestTypeInfo(void);
 void TestProperty(void);
 void TestMethod(void);
-void TestCG(void);
+void TestGC(void);
 void TestRPC(void);
 
 int main()
@@ -26,10 +26,12 @@ int main()
 
 	GCManager::Create();
 
+	auto intType = TypeInfo::GetStaticTypeInfo<std::vector<int>::value_type>();
+
 	TestTypeInfo();
 	TestProperty();
 	TestMethod();
-	TestCG();
+	TestGC();
 	TestRPC();
 
 	GCManager::Destroy();
@@ -125,7 +127,7 @@ void TestProperty(void)
 	vec2.GetTypeInfo().PrintPropertyValues(&vec2);
 	vec2.GetTypeInfo().PrintPropertyValuesRecursive(&vec2);
 
-	InnerVector temp; 
+	InnerVector temp;
 	temp.GetTypeInfo().PrintPropertyValues(&temp);
 	temp.GetTypeInfo().PrintPropertyValuesRecursive(&temp);
 	temp.GetTypeInfo().PrintProperties();
@@ -192,9 +194,12 @@ class GameInstance : public GCObject
 public:
 	void CreateTenThousandObjects()
 	{
+		mGCObjectsInVec.resize(OBJECT_COUNT, nullptr);
+
 		for (int i = 0; i < OBJECT_COUNT; ++i)
 		{
 			mGCObjects.Add(NewGCObject<TempObject>(GCManager::Get()));
+			mGCObjectsInVec[i] = NewGCObject<TempObject>(GCManager::Get());
 		}
 	}
 
@@ -202,21 +207,24 @@ public:
 	{
 		const size_t SIZE = mGCObjects.GetSize();
 
-		for (int i = static_cast<int>(SIZE) - 1; i >= 0; --i)
+		for (int i = OBJECT_COUNT - 1; i >= 0; --i)
 		{
 			mGCObjects[i] = nullptr;
 			mGCObjects.RemoveLast();
+			mGCObjectsInVec[i] = nullptr;
 		}
 	}
 
 private:
-	enum { OBJECT_COUNT = 10000 };
+	enum { OBJECT_COUNT = 5000 };
 	PROPERTY(mGCObjects)
 		FixedVector<GCObject*, OBJECT_COUNT> mGCObjects;
+	PROPERTY(mGCObjectsInVec)
+		std::vector<GCObject*> mGCObjectsInVec;
 };
 
 
-void TestCG(void)
+void TestGC(void)
 {
 	const size_t TEST_INSTANCE_COUNT = 10;
 	GameInstance* gameInstances[TEST_INSTANCE_COUNT];

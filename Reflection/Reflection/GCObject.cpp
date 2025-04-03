@@ -29,22 +29,21 @@ void GCObject::markRecursive(void* object, const Property* property)
 	{
 		static_cast<GCObject*>(object)->sertMarked(true);
 	}
-
-	// todo : 배열의 크기가 아닌 요소 수 만큼 순회할 수 있도록 하긴
-	if (typeInfo.IsArray() && typeInfo.GetElementType()->IsChildOf<GCObject>())
+	if (typeInfo.IsIterable() && typeInfo.GetIteratorElementType()->IsChildOf<GCObject>())
 	{
-		size_t END = typeInfo.GetArrayExtent();
-		const TypeInfo& elementType = *typeInfo.GetElementType();
-		GCObject** gcObjectArray = static_cast<GCObject**>(object);
+		std::unique_ptr<IteratorWrapperBase> beginIter = property->CreateIteratorBegin<GCObject*>(object);
+		std::unique_ptr<IteratorWrapperBase> endIter = property->CreateIteratorEnd<GCObject*>(object);
 
-		for (size_t i = 0; i < END; ++i)
+		while (beginIter && endIter && *beginIter != *endIter)
 		{
-			GCObject* gcObject = gcObjectArray[i];
+			GCObject* gcObject = *static_cast<GCObject**>(beginIter->Dereference());
 
 			if (gcObject != nullptr)
 			{
 				gcObject->sertMarked(true);
 			}
+
+			beginIter->Increment();
 		}
 	}
 
