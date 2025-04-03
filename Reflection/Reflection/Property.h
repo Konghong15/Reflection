@@ -238,43 +238,13 @@ public:
 		concreteHandler->Set(object, value, index);
 	}
 
-	void PrintPropertyValue(void* object, int indent) const
-	{
-		std::string indentStr(indent * 4, ' ');
-		std::cout
-			<< indentStr
-			<< "Type: " << mType.GetName()
-			<< ", Name: " << mName;
+	inline void PrintPropertyValue(void* object, int indent) const;
+	inline void PrintProperty(int indent) const;
 
-		mPrintFunc(mHandler.GetRawPointer(object));
-		std::cout << std::endl;
-	}
-
-	void PrintProperty(int indent) const
-	{
-		std::string indentStr(indent * 4, ' ');
-
-		std::cout
-			<< indentStr
-			<< "Type: " << mType.GetName()
-			<< ", Name: " << mName << "\n";
-	}
-
-	const char* GetName() const
-	{
-		return mName;
-	}
-
-	const TypeInfo& GetTypeInfo() const
-	{
-		return mType;
-	}
-
-	void* GetRawPointer(void* object) const
-	{
-		return mHandler.GetRawPointer(object);
-	}
-
+	inline const char* GetName() const;
+	inline const TypeInfo& GetTypeInfo() const;
+	inline void* GetRawPointer(void* object) const;
+	
 private:
 	using PrintFuncPtr = void(*)(void*);
 
@@ -283,6 +253,43 @@ private:
 	const PropertyHandlerBase& mHandler;
 	PrintFuncPtr mPrintFunc = nullptr;
 };
+
+inline void Property::PrintPropertyValue(void* object, int indent) const
+{
+	std::string indentStr(indent * 4, ' ');
+	std::cout
+		<< indentStr
+		<< "Type: " << mType.GetName()
+		<< ", Name: " << mName;
+
+	mPrintFunc(mHandler.GetRawPointer(object));
+	std::cout << std::endl;
+}
+
+inline void Property::PrintProperty(int indent) const
+{
+	std::string indentStr(indent * 4, ' ');
+
+	std::cout
+		<< indentStr
+		<< "Type: " << mType.GetName()
+		<< ", Name: " << mName << "\n";
+}
+
+inline const char* Property::GetName() const
+{
+	return mName;
+}
+
+inline const TypeInfo& Property::GetTypeInfo() const
+{
+	return mType;
+}
+
+inline void* Property::GetRawPointer(void* object) const
+{
+	return mHandler.GetRawPointer(object);
+}
 
 // 인스턴스의 맴버값 출력 함수(컴파일 타임에 함수 포인터 캡처함)
 template <typename T>

@@ -212,31 +212,12 @@ public:
 			return concrete->Invoke(caller, std::forward<TArgs>(args)...);
 		}
 	}
-
-	const char* GetName() const
-	{
-		return mName;
-	}
-
-	const TypeInfo& GetReturnType() const
-	{
-		return *mReturnType;
-	}
-
-	const std::vector<const TypeInfo*>& GetParameterTypes() const
-	{
-		return mParameterTypes;
-	}
-
-	const TypeInfo& GetParameterType(size_t i) const
-	{
-		return *mParameterTypes[i];
-	}
-
-	size_t NumParameter() const
-	{
-		return mParameterTypes.size();
-	}
+	
+	inline const char* GetName() const;
+	inline const TypeInfo& GetReturnType() const;
+	inline const std::vector<const TypeInfo*>& GetParameterTypes() const;
+	inline const TypeInfo& GetParameterType(size_t i) const;
+	inline size_t NumParameter() const;
 
 private:
 	template <typename TRet, typename... Args>
@@ -254,6 +235,31 @@ private:
 	const char* mName = nullptr;
 	const CallableBase& mCallable;
 };
+
+inline const char* Method::GetName() const
+{
+	return mName;
+}
+
+inline const TypeInfo& Method::GetReturnType() const
+{
+	return *mReturnType;
+}
+
+inline const std::vector<const TypeInfo*>& Method::GetParameterTypes() const
+{
+	return mParameterTypes;
+}
+
+inline const TypeInfo& Method::GetParameterType(size_t i) const
+{
+	return *mParameterTypes[i];
+}
+
+inline size_t Method::NumParameter() const
+{
+	return mParameterTypes.size();
+}
 
 template <typename T>
 struct is_const_member_function : std::false_type {};
