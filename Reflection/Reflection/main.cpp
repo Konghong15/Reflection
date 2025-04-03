@@ -57,7 +57,6 @@ class Cat : public Animal
 
 void TestTypeInfo(void)
 {
-	// 상속 관계 체크
 	Cat cat;
 	Animal* animalPtr = &cat;
 
@@ -88,17 +87,6 @@ public:
 	}
 };
 
-struct InnerVector
-{
-	GENERATE_TYPE_INFO(InnerVector)
-		PROPERTY(Vec1)
-		PROPERTY(Vec2)
-
-public:
-	Vector2 Vec1;
-	Vector2 Vec2;
-};
-
 void TestProperty(void)
 {
 	const float INIT_X = 10.f;
@@ -125,13 +113,6 @@ void TestProperty(void)
 	assert(FloatEqual(propY->Get<float>(&vec2), SET_Y));
 
 	vec2.GetTypeInfo().PrintPropertyValues(&vec2);
-	vec2.GetTypeInfo().PrintPropertyValuesRecursive(&vec2);
-
-	InnerVector temp;
-	temp.GetTypeInfo().PrintPropertyValues(&temp);
-	temp.GetTypeInfo().PrintPropertyValuesRecursive(&temp);
-	temp.GetTypeInfo().PrintProperties();
-	temp.GetTypeInfo().PrintPropertiesRecursive();
 }
 
 class Person
