@@ -11,6 +11,19 @@
 #include "GCObject.h"
 
 GCManager* GCManager::mInstance = nullptr;
+
+GCManager::~GCManager()
+{
+	const size_t OBJECT_COUNT = mGCObjects.GetSize();
+
+	for (int i = static_cast<int>(OBJECT_COUNT) - 1; i >= 0; --i)
+	{
+		delete mGCObjects[i];
+		mGCObjects[i] = nullptr;
+		mGCObjects.RemoveLast();
+	}
+}
+
 void GCManager::Collect()
 {
 	using namespace std::chrono;

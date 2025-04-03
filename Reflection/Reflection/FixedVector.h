@@ -12,7 +12,6 @@ class FixedVector
 	GENERATE_TYPE_INFO(FixedVector)
 
 public:
-public:
 	using ValueType = T;
 	using value_type = T;  // STL 호환을 위한 타입 별칭
 	using SizeType = size_t;

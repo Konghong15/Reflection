@@ -160,24 +160,24 @@ class IteratorWrapper : public IteratorWrapperBase
 	GENERATE_TYPE_INFO(IteratorWrapper)
 
 public:
-	IteratorWrapper(Iter it)
-		: mIt(it)
+	IteratorWrapper(Iter iter)
+		: mIter(iter)
 	{
 	}
 	void Increment() override
 	{
-		++mIt;
+		++mIter;
 	}
 	void* Dereference() const override
 	{
-		return (void*)&(*mIt);
+		return (void*)&(*mIter);
 	}
 
 	bool operator==(const IteratorWrapperBase& other) const override
 	{
 		if (const auto* otherTyped = dynamic_cast<const IteratorWrapper<Iter>*>(&other))
 		{
-			return mIt == otherTyped->mIt;
+			return mIter == otherTyped->mIter;
 		}
 		return false;
 	}
@@ -188,7 +188,7 @@ public:
 	}
 
 private:
-	Iter mIt;
+	Iter mIter;
 };
 
 class BaseIteratorHandler
@@ -368,8 +368,8 @@ public:
 	inline const TypeInfo& GetTypeInfo() const;
 	inline void* GetRawPointer(void* object) const;
 
-	inline void SetIteratorHandler(BaseIteratorHandler* handler) { mIteratorHandler = handler; }
-	inline bool HasIterator() const { return mIteratorHandler != nullptr; }
+	inline void SetIteratorHandler(BaseIteratorHandler* handler);
+	inline bool HasIterator() const;
 
 private:
 	using PrintFuncPtr = void(*)(void*);
@@ -418,9 +418,20 @@ inline void* Property::GetRawPointer(void* object) const
 	return mHandler.GetRawPointer(object);
 }
 
+inline void Property::SetIteratorHandler(BaseIteratorHandler* handler)
+{
+	mIteratorHandler = handler;
+}
+
+inline bool Property::HasIterator() const
+{ 
+	return mIteratorHandler != nullptr; 
+}
+
 // 인스턴스의 맴버값 출력 함수(컴파일 타임에 함수 포인터 캡처함)
 template <typename T>
-concept OstreamWritable = requires(std::ostream & os, T value) {
+concept OstreamWritable = requires(std::ostream & os, T value)
+{
 	{ os << value } -> std::same_as<std::ostream&>;
 };
 

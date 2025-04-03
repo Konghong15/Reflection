@@ -4,6 +4,12 @@
 #include "GCManager.h"
 #include "GCUtility.h"
 
+GCObject::GCObject()
+	: mbMarked(false)
+	, mbRoot(false)
+{
+}
+
 void GCObject::mark()
 {
 	if (isMarked())

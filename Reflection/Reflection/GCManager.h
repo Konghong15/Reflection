@@ -17,53 +17,22 @@ struct GCDebugInfo
 	size_t RootObjectCount = 0;
 };
 
-class GCManager
+class GCManager final
 {
 public:
-	static void Create()
-	{
-		mInstance = new GCManager();
-	}
+	static void Create();
+	static GCManager& Get();
+	static void Destroy();
 
-	static GCManager& Get()
-	{
-		assert(mInstance != nullptr);
-		return *mInstance;
-	}
-
-	static void Destroy()
-	{
-		delete mInstance;
-		mInstance = nullptr;
-	}
-
-public:
 	void Collect();
 	void CollectMultiThread();
 
-	void AddObject(GCObject* object)
-	{
-		mGCObjects.Add(object);
-	}
-
-	const GCDebugInfo& GetLastDebugInfo() const
-	{
-		return mLastDebugInfo;
-	}
+	void AddObject(GCObject* object);
+	const GCDebugInfo& GetLastDebugInfo() const;
 
 private:
 	GCManager() = default;
-	~GCManager()
-	{
-		const size_t OBJECT_COUNT = mGCObjects.GetSize();
-
-		for (int i = static_cast<int>(OBJECT_COUNT) - 1; i >= 0; --i)
-		{
-			delete mGCObjects[i];
-			mGCObjects[i] = nullptr;
-			mGCObjects.RemoveLast();
-		}
-	}
+	~GCManager();
 	GCManager(const GCManager&) = delete;
 	GCManager& operator=(const GCManager&) = delete;
 
@@ -75,3 +44,30 @@ private:
 	GCDebugInfo mLastDebugInfo;
 	ThreadPool mThreadPool;
 };
+
+inline void GCManager::Create()
+{
+	mInstance = new GCManager();
+}
+
+inline GCManager& GCManager::Get()
+{
+	assert(mInstance != nullptr);
+	return *mInstance;
+}
+
+inline void GCManager::Destroy()
+{
+	delete mInstance;
+	mInstance = nullptr;
+}
+
+inline void GCManager::AddObject(GCObject* object)
+{
+	mGCObjects.Add(object);
+}
+
+inline const GCDebugInfo& GCManager::GetLastDebugInfo() const
+{
+	return mLastDebugInfo;
+}

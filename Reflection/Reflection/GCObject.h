@@ -9,38 +9,42 @@ class GCObject
 		friend class GCManager;
 
 public:
-	GCObject()
-		: mbMarked(false)
-		, mbRoot(false)
-	{
-	}
+	GCObject();
 	virtual ~GCObject() = default;
+	GCObject(const GCObject&) = default;
+	GCObject& operator=(const GCObject&) = default;
 
-	void SetRoot(bool root)
-	{
-		mbRoot = root;
-	}
-
-	bool IsRoot() const
-	{
-		return mbRoot;
-	}
+	inline void SetRoot(bool root);
+	inline bool IsRoot() const;
 
 private:
 	void mark();
 	void markRecursive(void * object, const Property* property);
 
-	void sertMarked(bool marked)
-	{
-		mbMarked = marked;
-	}
-
-	bool isMarked() const
-	{
-		return mbMarked;
-	}
+	inline void sertMarked(bool marked);
+	inline bool isMarked() const;
 
 private:
 	bool mbMarked;
 	bool mbRoot;
 };
+
+inline void GCObject::SetRoot(bool root)
+{
+	mbRoot = root;
+}
+
+inline bool GCObject::IsRoot() const
+{
+	return mbRoot;
+}
+
+inline void GCObject::sertMarked(bool marked)
+{
+	mbMarked = marked;
+}
+
+inline bool GCObject::isMarked() const
+{
+	return mbMarked;
+}
