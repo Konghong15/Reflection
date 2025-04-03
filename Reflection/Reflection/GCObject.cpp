@@ -29,6 +29,8 @@ void GCObject::markRecursive(void* object, const Property* property)
 	{
 		static_cast<GCObject*>(object)->sertMarked(true);
 	}
+
+	// todo : 배열의 크기가 아닌 요소 수 만큼 순회할 수 있도록 하긴
 	if (typeInfo.IsArray() && typeInfo.GetElementType()->IsChildOf<GCObject>())
 	{
 		size_t END = typeInfo.GetArrayExtent();

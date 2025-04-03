@@ -18,26 +18,32 @@
 class Procedure
 {
 public:
+	// 일반 함수 포인터
 	template <typename TRet, typename... TArgs>
 	Procedure(TypeInfo& owner, [[maybe_unused]] TRet(*ptr)(TArgs...), const char* name, const CallableBase& callable)
-		: mName(name), mCallable(callable)
+		: mName(name)
+		, mCallable(callable)
 	{
 		static_assert(std::is_same_v<TRet, void>, "Procedure must return void");
 		collectFunctionSignature<TArgs...>();
 		owner.addProcedure(this);
 	}
 
+	// 맴버 함수 non-const
 	template <typename TClass, typename... TArgs>
 	Procedure(TypeInfo& owner, [[maybe_unused]] void(TClass::* ptr)(TArgs...), const char* name, const CallableBase& callable)
-		: mName(name), mCallable(callable)
+		: mName(name)
+		, mCallable(callable)
 	{
 		collectFunctionSignature<TArgs...>();
 		owner.addProcedure(this);
 	}
 
+	// 맴버 함수 const
 	template <typename TClass, typename... TArgs>
 	Procedure(TypeInfo& owner, [[maybe_unused]] void(TClass::* ptr)(TArgs...) const, const char* name, const CallableBase& callable)
-		: mName(name), mCallable(callable)
+		: mName(name)
+		, mCallable(callable)
 	{
 		collectFunctionSignature<TArgs...>();
 		owner.addProcedure(this);
@@ -48,6 +54,7 @@ public:
 	{
 		std::vector<const TypeInfo*> callTypes = { &TypeInfo::GetStaticTypeInfo<TArgs>()... };
 
+		// 1. 매개변수 검사
 		if (callTypes.size() != mParameterTypes.size())
 		{
 			assert(false && "Procedure::Invoke - Argument count mismatch");
@@ -66,6 +73,7 @@ public:
 			}
 		}
 
+		// 2. 함수 호출
 		auto concreteCallable = static_cast<const ICallable<void, TArgs...>*>(&mCallable);
 		concreteCallable->Invoke(caller, std::forward<TArgs>(args)...);
 	}
@@ -126,8 +134,8 @@ public:
 		}
 		else
 		{
-			TClass* forDeduction = nullptr;
-			static StaticCallable callable(forDeduction, Ptr);
+			TClass* forTypeDeduction = nullptr;
+			static StaticCallable callable(forTypeDeduction, Ptr);
 			static Procedure procedure(typeInfo, Ptr, name, callable);
 		}
 	}

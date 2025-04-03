@@ -63,7 +63,6 @@ struct SuperClassTypeDeduction<T, std::void_t<typename T::ThisType>>
 	using Type = T::ThisType;
 };
 
-// 부모의 타입 인포 객체를 얻어오는 객체
 template <typename T>
 struct TypeInfoInitializer
 {
@@ -74,7 +73,6 @@ struct TypeInfoInitializer
 		{
 			mSuper = &(typename T::Super::StaticTypeInfo());
 		}
-
 		if constexpr (std::is_array_v<T>)
 		{
 			using ElementType = std::remove_all_extents_t<T>;
@@ -87,23 +85,17 @@ struct TypeInfoInitializer
 	const TypeInfo* mElementType = nullptr;
 };
 
-template <typename T>
-constexpr const char* PrettyTypeName()
-{
-	return __FUNCSIG__;
-}
-
+// T 타입으로부터 이름 추출
 template <typename T>
 std::string ExtractTypeName()
 {
-	std::string_view sig = PrettyTypeName<T>();
+	std::string_view sig = __FUNCSIG__;
 
-	// MSVC는 "PrettyTypeName<...>" 안에 타입이 들어있음
-	auto start = sig.find("PrettyTypeName<") + strlen("PrettyTypeName<");
+	auto start = sig.find("ExtractTypeName<") + strlen("ExtractTypeName<");
 	auto end = sig.find(">(void)");
 
 	if (start == std::string_view::npos || end == std::string_view::npos || end <= start)
-		return std::string(sig); // fallback
+		return std::string(sig);
 
 	return std::string(sig.substr(start, end - start));
 }
@@ -115,7 +107,6 @@ class TypeInfo
 	friend class Procedure;
 
 public:
-	// 왜 생성자에서 initializer를 받을까?
 	template <typename T>
 	explicit TypeInfo(const TypeInfoInitializer<T>& initializer)
 		: mTypeHash(typeid(T).hash_code())
@@ -140,13 +131,11 @@ public:
 	{
 		return T::StaticTypeInfo();
 	}
-
 	template <typename T> requires std::is_pointer_v<T>&& HasStaticTypeInfo<std::remove_pointer_t<T>>
 	static const TypeInfo& GetStaticTypeInfo()
 	{
 		return std::remove_pointer_t<T>::StaticTypeInfo();
 	}
-
 	template <typename T> requires (!HasStaticTypeInfo<T>) && (!HasStaticTypeInfo<std::remove_pointer_t<T>>)
 		static const TypeInfo& GetStaticTypeInfo()
 	{
@@ -154,119 +143,46 @@ public:
 		return typeInfo;
 	}
 
-	void PrintObject(void* object, int indent = 0, bool recursive = false) const;
-
-	void PrintProperties(int indent = 0) const;
-	void PrintPropertiesRecursive(int indent = 0) const;
-	void PrintMethods(int indent = 0) const;
-	void PrintProcedures(int indent = 0) const;
-
-	bool IsA(const TypeInfo& other) const
-	{
-		if (this == &other)
-		{
-			return true;
-		}
-
-		return mTypeHash == other.mTypeHash;
-	}
 	template <typename T>
 	bool IsA() const
 	{
 		return IsA(GetStaticTypeInfo<T>());
 	}
-
-	bool IsChildOf(const TypeInfo& other) const
-	{
-		if (IsA(other))
-		{
-			return true;
-		}
-
-		for (const TypeInfo* superOrNull = mSuper; superOrNull != nullptr; superOrNull = superOrNull->GetSuperOrNull())
-		{
-			assert(superOrNull != nullptr);
-			if (superOrNull->IsA(other))
-			{
-				return true;
-			}
-		}
-
-		return false;
-	}
-
 	template <typename T>
 	bool IsChildOf() const
 	{
 		return IsChildOf(GetStaticTypeInfo<T>());
 	}
 
-	inline const std::vector<const Method*>& GetMethods() const
-	{
-		return mMethods;
-	}
-	inline const Method* GetMethod(const char* name) const
-	{
-		auto iter = mMethodMap.find(name);
-		return (iter == mMethodMap.end()) ? nullptr : iter->second;
-	}
-	const std::vector<const Procedure*>& GetProcedures() const
-	{
-		return mProcedures;
-	}
-	const Procedure* GetProcedure(const char* name) const
-	{
-		auto iter = mProcedureMap.find(name);
-		return (iter == mProcedureMap.end()) ? nullptr : iter->second;
-	}
+	void PrintMethods(int indent = 0) const;
+	void PrintProcedures(int indent = 0) const;
+	void PrintProperties(int indent = 0) const;
+	void PrintPropertiesRecursive(int indent = 0) const;
+	void PrintPropertyValues(void* object, int indent = 0) const;
+	void PrintPropertyValuesRecursive(void* object, int indent = 0) const;
 
-	inline const std::vector<const Property*>& GetProperties() const
-	{
-		return mProperties;
-	}
-	inline const Property* GetProperty(const char* name) const
-	{
-		auto iter = mPropertyMap.find(name);
-		return (iter == mPropertyMap.end()) ? nullptr : iter->second;
-	}
+	inline bool IsA(const TypeInfo& other) const;
+	inline bool IsChildOf(const TypeInfo& other) const;
 
-	inline const TypeInfo* GetSuperOrNull() const
-	{
-		return mSuper;
-	}
+	inline const std::vector<const Method*>& GetMethods() const;
+	inline const Method* GetMethod(const char* name) const;
 
-	const std::string GetName() const
-	{
-		return mName;
-	}
+	inline const std::vector<const Procedure*>& GetProcedures() const;
+	inline const Procedure* GetProcedure(const char* name) const;
 
-	inline bool IsArray() const
-	{
-		return mIsArray;
-	}
+	inline const std::vector<const Property*>& GetProperties() const;
+	inline const Property* GetProperty(const char* name) const;
 
-	bool HasElementType() const {
-		return mElementType != nullptr;
-	}
+	inline const TypeInfo* GetSuperOrNull() const;
+	inline const std::string GetName() const;
 
-	const TypeInfo* GetElementType() const {
-		return mElementType;
-	}
+	inline bool IsArray() const;
+	inline bool HasElementType() const;
+	inline const TypeInfo* GetElementType() const;
+	inline size_t GetArrayExtent() const;
 
-	size_t GetArrayExtent() const
-	{
-		return mArrayExtent;
-	}
-
-	inline bool IsPointer() const
-	{
-		return mIsPointer;
-	}
-
-	size_t GetSize() const
-	{
-		return mSize;
-	}
+	inline bool IsPointer() const;
+	inline size_t GetSize() const;
 
 private:
 	void addMethod(const Method* method);
@@ -299,3 +215,96 @@ private:
 	size_t mArrayExtent = 0;
 	size_t mSize;
 };
+
+inline bool TypeInfo::IsA(const TypeInfo& other) const
+{
+	return (this == &other) || (mTypeHash == other.mTypeHash);
+}
+
+inline bool TypeInfo::IsChildOf(const TypeInfo& other) const
+{
+	if (IsA(other))
+		return true;
+
+	for (const TypeInfo* superOrNull = mSuper; superOrNull != nullptr; superOrNull = superOrNull->GetSuperOrNull())
+	{
+		assert(superOrNull != nullptr);
+		if (superOrNull->IsA(other))
+			return true;
+	}
+
+	return false;
+}
+
+inline const std::vector<const Method*>& TypeInfo::GetMethods() const
+{
+	return mMethods;
+}
+
+inline const Method* TypeInfo::GetMethod(const char* name) const
+{
+	auto iter = mMethodMap.find(name);
+	return (iter == mMethodMap.end()) ? nullptr : iter->second;
+}
+
+inline const std::vector<const Procedure*>& TypeInfo::GetProcedures() const
+{
+	return mProcedures;
+}
+
+inline const Procedure* TypeInfo::GetProcedure(const char* name) const
+{
+	auto iter = mProcedureMap.find(name);
+	return (iter == mProcedureMap.end()) ? nullptr : iter->second;
+}
+
+inline const std::vector<const Property*>& TypeInfo::GetProperties() const
+{
+	return mProperties;
+}
+
+inline const Property* TypeInfo::GetProperty(const char* name) const
+{
+	auto iter = mPropertyMap.find(name);
+	return (iter == mPropertyMap.end()) ? nullptr : iter->second;
+}
+
+inline const TypeInfo* TypeInfo::GetSuperOrNull() const
+{
+	return mSuper;
+}
+
+inline const std::string TypeInfo::GetName() const
+{
+	return mName;
+}
+
+inline bool TypeInfo::IsArray() const
+{
+	return mIsArray;
+}
+
+inline bool TypeInfo::HasElementType() const
+{
+	return mElementType != nullptr;
+}
+
+inline const TypeInfo* TypeInfo::GetElementType() const
+{
+	return mElementType;
+}
+
+inline size_t TypeInfo::GetArrayExtent() const
+{
+	return mArrayExtent;
+}
+
+inline bool TypeInfo::IsPointer() const
+{
+	return mIsPointer;
+}
+
+inline size_t TypeInfo::GetSize() const
+{
+	return mSize;
+}

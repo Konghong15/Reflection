@@ -5,41 +5,45 @@
 #include "Method.h"
 #include "Procedure.h"
 
-void TypeInfo::PrintObject(void* object, int indent, bool recursive) const
+void TypeInfo::PrintPropertyValues(void* object, int indent) const
 {
 	for (const Property* property : GetProperties())
 	{
-		property->Print(object, indent);
+		property->PrintPropertyValue(object, indent);
+	}
+}
+void TypeInfo::PrintPropertyValuesRecursive(void* object, int indent) const
+{
+	for (const Property* property : GetProperties())
+	{
 		const TypeInfo& propType = property->GetTypeInfo();
+
+		if (!propType.GetProperties().empty())
+		{
+			void* memberPtr = property->GetRawPointer(object);
+			property->PrintProperty(indent);
+			propType.PrintPropertyValuesRecursive(memberPtr, indent + 1);
+		}
+		else
+		{
+			property->PrintPropertyValue(object, indent);
+		}
 	}
 }
 
 void TypeInfo::PrintProperties(int indent) const
 {
-	std::string indentStr(indent * 4, ' ');
-
 	for (const Property* property : GetProperties())
 	{
-		std::cout
-			<< indentStr
-			<< "Type: " << property->GetTypeInfo().GetName()
-			<< ", Name: " << property->GetName()
-			<< std::endl;
+		property->PrintProperty(indent);
 	}
 }
-
 void TypeInfo::PrintPropertiesRecursive(int indent) const
 {
-	std::string indentStr(indent * 4, ' ');
-
 	for (const Property* property : GetProperties())
 	{
-		std::cout
-			<< indentStr
-			<< "Type: " << property->GetTypeInfo().GetName()
-			<< ", Name: " << property->GetName()
-			<< std::endl;
-
+		property->PrintProperty(indent);
+		
 		const TypeInfo& propType = property->GetTypeInfo();
 
 		if (!propType.GetProperties().empty())
@@ -117,6 +121,7 @@ void TypeInfo::addProcedure(const Procedure* procedure)
 	mProcedures.push_back(procedure);
 	mProcedureMap[procedure->GetName()] = procedure;
 }
+
 void TypeInfo::collectSuperMethods()
 {
 	assert(mSuper != nullptr);

@@ -53,6 +53,7 @@ public:
 		{
 			std::swap(mElements[Index], mElements[mElementCount - 1]);
 		}
+
 		--mElementCount;
 	}
 

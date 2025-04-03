@@ -15,6 +15,7 @@
 		\
 	} regist_##Name;
 
+// non template class에서 참조를 위한 베이스 클래스
 class CallableBase
 {
 	GENERATE_TYPE_INFO(CallableBase)
@@ -23,6 +24,7 @@ public:
 	virtual ~CallableBase() = default;
 };
 
+// 구현을 강제하고 템플릿 매개변수로 형변환을 위한 템플릿 인터페이스 클래스
 template <typename TRet, typename... TArgs>
 class ICallable : public CallableBase
 {
@@ -70,11 +72,16 @@ public:
 	{
 	}
 
-	virtual TRet Invoke(void* caller, TArgs&&... args) const override {
+	virtual TRet Invoke(void* caller, TArgs&&... args) const override 
+	{
 		if constexpr (std::same_as<TRet, void>)
+		{
 			(static_cast<const TClass*>(caller)->*mPtr)(std::forward<TArgs>(args)...);
+		}
 		else
+		{
 			return (static_cast<const TClass*>(caller)->*mPtr)(std::forward<TArgs>(args)...);
+		}
 	}
 
 private:
@@ -111,6 +118,7 @@ private:
 class Method
 {
 public:
+	// 일반 함수 포인터
 	template <typename TRet, typename... TArgs>
 	Method(TypeInfo& owner, [[maybe_unused]] TRet(*ptr)(TArgs...), const char* name, const CallableBase& callable) :
 		mName(name),
@@ -120,6 +128,7 @@ public:
 		owner.addMethod(this);
 	}
 
+	// 맴버 함수 non-const
 	template <typename TClass, typename TRet, typename... TArgs>
 	Method(TypeInfo& owner, [[maybe_unused]] TRet(TClass::* ptr)(TArgs...), const char* name, const CallableBase& callable) :
 		mName(name),
@@ -129,6 +138,7 @@ public:
 		owner.addMethod(this);
 	}
 
+	// 맴버 함수 const
 	template <typename TClass, typename TRet, typename... TArgs>
 	Method(TypeInfo& owner, [[maybe_unused]] TRet(TClass::* ptr)(TArgs...) const, const char* name, const CallableBase& callable) :
 		mName(name),
@@ -141,19 +151,27 @@ public:
 	template <typename TRet, typename... TArgs>
 	TRet Invoke(void* caller, TArgs&&... args) const
 	{
+		// 1. 반환 타입 검사
 		const TypeInfo& returnType = TypeInfo::GetStaticTypeInfo<TRet>();
+
 		if (!returnType.IsChildOf(*mReturnType))
 		{
 			std::cerr << "[Method::Invoke] Return type mismatch: expected "
 				<< mReturnType->GetName() << ", got " << returnType.GetName() << std::endl;
 
 			assert(false && "Method::Invoke - Return type mismatch");
+			
 			if constexpr (!std::same_as<TRet, void>)
+			{
 				return {};
+			}
 			else
+			{
 				return;
+			}
 		}
 
+		// 2. 매개변수 검사
 		std::vector<const TypeInfo*> callTypes = { &TypeInfo::GetStaticTypeInfo<TArgs>()... };
 
 		if (callTypes.size() != mParameterTypes.size())
@@ -167,7 +185,6 @@ public:
 			else
 				return;
 		}
-
 		for (size_t i = 0; i < callTypes.size(); ++i)
 		{
 			if (!callTypes[i]->IsChildOf(*mParameterTypes[i]))
@@ -184,6 +201,7 @@ public:
 			}
 		}
 
+		// 3. 함수 호출
 		auto* concrete = static_cast<const ICallable<TRet, TArgs...>*>(&mCallable);
 		if constexpr (std::same_as<TRet, void>)
 		{

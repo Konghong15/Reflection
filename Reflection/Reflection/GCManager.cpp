@@ -64,7 +64,7 @@ void GCManager::Collect()
 	auto sweepMs = duration_cast<milliseconds>(sweepEnd - sweepStart).count();
 	auto sweepUs = duration_cast<microseconds>(sweepEnd - sweepStart).count();
 
-	//-------------------- 전체 --------------------
+	//-------------------- 디버그 정보 관리 --------------------
 	auto endTime = high_resolution_clock::now();
 	auto totalMs = duration_cast<milliseconds>(endTime - startTime).count();
 	auto totalUs = duration_cast<microseconds>(endTime - startTime).count();
@@ -177,7 +177,7 @@ void GCManager::CollectMultiThread()
 	auto sweepMs = duration_cast<milliseconds>(sweepEnd - sweepStart).count();
 	auto sweepUs = duration_cast<microseconds>(sweepEnd - sweepStart).count();
 
-	//-------------------- 전체 --------------------
+	//-------------------- 디버그 정보 관리 --------------------
 	auto endTime = high_resolution_clock::now();
 	auto totalMs = duration_cast<milliseconds>(endTime - startTime).count();
 	auto totalUs = duration_cast<microseconds>(endTime - startTime).count();
