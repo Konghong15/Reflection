@@ -1,3 +1,5 @@
+# 리플렉션과 가비지 컬렉션 개요
+
 ## 🪞 리플렉션(Reflection)이란?
 
 리플렉션은 **프로그램이 실행 중에 자신의 구조나 타입 정보를 조회하고 조작할 수 있도록 하는 기술**입니다.  
@@ -36,51 +38,48 @@
 - **객체 수명 주기의 명확한 분리**로 협업 시 안정성 강화  
 - **메모리 누수 및 잘못된 해제 방지**
 
+---
+
 # 🧪 테스트 스크린샷
 
 아래는 주요 기능을 테스트한 결과입니다.
 
 ---
 
-### 🧬 상속 구조 테스트
+### 🧬 상속 구조 테스트  
+런타임 타입 정보로 상속 계층을 확인하는 테스트입니다.
 
-런타임 타입 정보를 통해 상속 계층을 확인하는 테스트입니다.
-
-![상속 구조](./images/TestTypeInfo.png)
-
----
-
-### 🏷️ 프로퍼티 시스템 테스트
-
-객체의 멤버 변수에 대한 메타데이터를 정의하고 조회하는 예제입니다.
-
-![프로퍼티1](./images/TestProperty1.png)  
-![프로퍼티2](./images/TestProperty2.png)
+<img src="./images/TestTypeInfo.png" width="600">
 
 ---
 
-### 🧩 메서드 등록 및 호출 테스트
+### 🏷️ 프로퍼티 시스템 테스트  
+멤버 변수에 대한 메타데이터 등록 및 조회 테스트입니다.
 
-리플렉션 시스템을 통해 메서드를 등록하고, 런타임에 호출하는 예제입니다.
-
-![메서드1](./images/TestMethod1.png)  
-![메서드2](./images/TestMethod2.png)
-
----
-
-### 🔁 가비지 컬렉션 테스트
-
-GC 시스템이 동작하며 객체를 추적하고 해제하는 테스트입니다.
-
-![GC1](./images/TestGC1.png)  
-![GC2](./images/TestGC2.png)  
-![GC3](./images/TestGC3.png)
+<img src="./images/TestProperty1.png" width="600">  
+<img src="./images/TestProperty2.png" width="600">
 
 ---
 
-### 🌐 RPC 테스트
+### 🧩 메서드 등록 및 호출 테스트  
+메서드를 등록하고 리플렉션으로 호출하는 예제입니다.
 
-네트워크를 통한 원격 함수 호출을 리플렉션 기반으로 처리하는 예제입니다.
+<img src="./images/TestMethod1.png" width="600">  
+<img src="./images/TestMethod2.png" width="600">
 
-![RPC1](./images/TestRPC1.png)  
-![RPC2](./images/TestRPC2.png)
+---
+
+### 🔁 가비지 컬렉션 테스트  
+객체를 추적하고 정리하는 GC 동작 테스트입니다.
+
+<img src="./images/TestGC1.png" width="600">  
+<img src="./images/TestGC2.png" width="600">  
+<img src="./images/TestGC3.png" width="600">
+
+---
+
+### 🌐 RPC 테스트  
+리플렉션 기반 원격 함수 호출 테스트입니다.
+
+<img src="./images/TestRPC1.png" width="600">  
+<img src="./images/TestRPC2.png" width="600">
