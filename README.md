@@ -47,6 +47,9 @@
 - 배열 여부
 - 이터레이터 가능 여부
 
+<img src="./images/TypeInfo1.png" width="600">
+<img src="./images/TypeInfo2.png" width="600">
+
 타입 정보 매크로는 현재 클래스의 `ThisType`을 선언하기 전에, 부모 클래스로부터 선언된 `ThisType`을 통해 부모 타입 정보를 취득합니다.  
 부모 타입이 존재하지 않을 경우, 부모 타입은 `void`로 설정됩니다.
 
@@ -54,15 +57,12 @@
 이렇게 획득한 참조를 통해 클래스 타입과 인스턴스 모두에서 `TypeInfo`에 접근할 수 있도록 다형적인 접근 인터페이스를 제공합니다.
 이때 `inline static` 멤버는 클래스 정의 내부에서 초기화할 수 있으며 외부에 따로 정의할 필요가 없습니다.
 
+<img src="./images/TypeInfo3.png" width="600">
+
 상속 구조는 `IsA` 함수를 통해 정적으로 정의된 두 `TypeInfo` 인스턴스의 주소를 비교하여 판별됩니다.  
 단, 다른 DLL 간에서는 동일한 `TypeInfo`라도 인스턴스 주소가 다르므로, 해시 값을 추가로 비교하여 동일 타입 여부를 확인합니다.  
 `IsChildOf`는 상속 관계 확인을 위해 부모 `TypeInfo`가 유효할 때까지 `IsA`를 반복 호출합니다.
 
-**소스 코드:**
-
-<img src="./images/TypeInfo1.png" width="600">
-<img src="./images/TypeInfo2.png" width="600">
-<img src="./images/TypeInfo3.png" width="600">
 
 ---
 
@@ -71,19 +71,19 @@
 프로퍼티는 전달된 포인터 타입에서 값을 출력하거나, `Get`/`Set`을 통한 프로퍼티 수정,  
 `GetAt`/`SetAt`을 통한 배열 접근, `CreateIteratorBegin`/`End`를 통한 베이스 이터레이터 반환 등의 기능을 제공합니다.
 
+<img src="./images/Property1.png" width="600">
+
 프로퍼티 매크로는 `TypeInfo`와 매크로에 전달된 멤버 변수 이름으로부터 클래스 타입, 변수 타입, 변수 포인터 타입, 변수의 주소를 추출합니다.
+
+<img src="./images/Property2.png" width="600">
 
 `PropertyRegister`는 프로퍼티 객체를 생성하는 데 필요한 정보를 기반으로 `Property` 객체를 `static`으로 생성합니다.  
 해당 멤버가 `static`인지 여부에 따라 `Get`/`Set` 처리를 담당할 핸들러 클래스를 분기 처리하고, 순회 가능한 경우에는 `IterHandler`를 할당합니다.
 
+<img src="./images/Property3.png" width="600">
+
 핸들러 클래스는 런타임 다형성을 제공하는 추상 기반 클래스와, 컴파일 타임 다형성을 위한 템플릿 중간 클래스들로 구성됩니다.  
 이 구조를 통해 T 타입에 대한 유효성 검사와 유연한 확장성을 동시에 확보할 수 있습니다.
-
-**소스 코드:**
-
-<img src="./images/Property1.png" width="600">
-<img src="./images/Property2.png" width="600">
-<img src="./images/Property3.png" width="600">
 
 ---
 
@@ -110,11 +110,17 @@
 싱글톤으로 선언된 `GCManager` 객체를 전달하면, 내부에서 객체를 동적으로 생성한 뒤  
 해당 객체를 `GCManager`에 등록 대상으로 등록시켜줍니다.
 
+<img src="./images/GC1.png" width="600">
+<img src="./images/GC2.png" width="600">
+
 `GCManager`에서 `Collect()`를 호출하면 다음과 같은 절차가 수행됩니다:
 
 1. GCObject들이 저장된 배열을 순회하며 모든 객체의 마크 여부를 초기화합니다.  
 2. 루트로 등록된 오브젝트들을 얻어온 뒤, 각각에 대해 `mark()`를 호출하여 참조 그래프를 따라 탐색합니다.  
 3. 스윕 단계에서는 루트가 아니며 마킹되지 않은 객체들을 실제로 해제합니다.
+
+<img src="./images/GC3.png" width="600">
+<img src="./images/GC4.png" width="600">
 
 `GCObject`의 마크 단계에서는 자신이 가지고 있는 **모든 프로퍼티를 순회**하고,  
 해당 프로퍼티의 타입이 다음 중 하나인 경우에 대해 `mark()`를 **전파**합니다:
@@ -127,13 +133,6 @@
 
 이 구조는 리플렉션 메타데이터를 기반으로 GC 대상 여부를 동적으로 판단할 수 있게 하며,  
 직접적인 타입 종속 없이 일반화된 런타임 메모리 관리를 가능하게 합니다.
-
-**소스 코드:**
-
-<img src="./images/GC1.png" width="600">
-<img src="./images/GC2.png" width="600">
-<img src="./images/GC3.png" width="600">
-<img src="./images/GC4.png" width="600">
 
 ---
 
