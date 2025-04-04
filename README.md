@@ -47,40 +47,23 @@
 - 배열 여부
 - 이터레이터 가능 여부
 
-> 💡 아래 코드는 클래스 내부에서 static TypeInfo를 선언하고 초기화하는 방식입니다.
-
-#### 🔹 타입 정보 매크로 예시
-
-<div align="center">
-  <img src="./images/TypeInfo1.png" width="600">
-</div>
+#### 타입 정보 매크로
+<img src="./images/TypeInfo1.png" width="600">
+<img src="./images/TypeInfo2.png" width="600">
 
 타입 정보 매크로는 현재 클래스의 `ThisType`을 선언하기 전에, 부모 클래스로부터 선언된 `ThisType`을 통해 부모 타입 정보를 취득합니다.  
 부모 타입이 존재하지 않을 경우, 부모 타입은 `void`로 설정됩니다.
 
-> 💡 TypeInfo는 inline static 지역변수로 중복 없이 선언됩니다.
-
-#### 🔸 부모 타입 접근 구조
-
-<div align="center">
-  <img src="./images/TypeInfo2.png" width="600">
-</div>
-
 매크로는 `static` 지역 변수로 `TypeInfo`를 생성하며, `inline static`으로 선언된 멤버를 통해 실행 시점에 곧바로 초기화되고 중복 생성이 방지됩니다.  
 이렇게 획득한 참조를 통해 클래스 타입과 인스턴스 모두에서 `TypeInfo`에 접근할 수 있도록 다형적인 접근 인터페이스를 제공합니다.
+이때 `inline static` 멤버는 클래스 정의 내부에서 초기화할 수 있으며 외부에 따로 정의할 필요가 없습니다.
 
-> 💡 상속 관계 확인을 위한 IsA, IsChildOf 함수 구조
-
-#### 🔹 상속 판별 함수 구조
-
-<div align="center">
-  <img src="./images/TypeInfo3.png" width="600">
-</div>
+#### 상속 구조 함수
+<img src="./images/TypeInfo3.png" width="600">
 
 상속 구조는 `IsA` 함수를 통해 정적으로 정의된 두 `TypeInfo` 인스턴스의 주소를 비교하여 판별됩니다.  
 단, 다른 DLL 간에서는 동일한 `TypeInfo`라도 인스턴스 주소가 다르므로, 해시 값을 추가로 비교하여 동일 타입 여부를 확인합니다.  
 `IsChildOf`는 상속 관계 확인을 위해 부모 `TypeInfo`가 유효할 때까지 `IsA`를 반복 호출합니다.
-
 
 ---
 
@@ -89,15 +72,18 @@
 프로퍼티는 전달된 포인터 타입에서 값을 출력하거나, `Get`/`Set`을 통한 프로퍼티 수정,  
 `GetAt`/`SetAt`을 통한 배열 접근, `CreateIteratorBegin`/`End`를 통한 베이스 이터레이터 반환 등의 기능을 제공합니다.
 
+#### 프로퍼티 매크로
 <img src="./images/Property1.png" width="600">
 
 프로퍼티 매크로는 `TypeInfo`와 매크로에 전달된 멤버 변수 이름으로부터 클래스 타입, 변수 타입, 변수 포인터 타입, 변수의 주소를 추출합니다.
 
+#### 프로퍼티 레지스터
 <img src="./images/Property2.png" width="600">
 
 `PropertyRegister`는 프로퍼티 객체를 생성하는 데 필요한 정보를 기반으로 `Property` 객체를 `static`으로 생성합니다.  
 해당 멤버가 `static`인지 여부에 따라 `Get`/`Set` 처리를 담당할 핸들러 클래스를 분기 처리하고, 순회 가능한 경우에는 `IterHandler`를 할당합니다.
 
+#### 핸들러 클래스 구조
 <img src="./images/Property3.png" width="600">
 
 핸들러 클래스는 런타임 다형성을 제공하는 추상 기반 클래스와, 컴파일 타임 다형성을 위한 템플릿 중간 클래스들로 구성됩니다.  
@@ -121,32 +107,34 @@
 
 ### 가비지 컬렉션 시스템 (GC)
 
-가비지 컬렉터는 Mark-and-Sweep 방식으로 동작하기 위해, 전역적으로 GC의 대상이 되는 객체(`GCObject`)와  
-이 객체들에 대한 참조를 관리하는 `GCManager`로 구성됩니다.
+가비지 컬렉터는 Mark-and-Sweep 방식으로 동작하기 위해, 전역적으로 GC의 대상이 되는 객체(GCObject)와  
+이 객체들에 대한 참조를 관리하는 GCManager로 구성됩니다.
 
-개체 생성은 `GCUtility.h`에 정의된 `NewGCObject`를 통해 이루어지며,  
-싱글톤으로 선언된 `GCManager` 객체를 전달하면, 내부에서 객체를 동적으로 생성한 뒤  
-해당 객체를 `GCManager`에 등록 대상으로 등록시켜줍니다.
+개체 생성은 GCUtility.h에 정의된 NewGCObject를 통해 이루어지며,  
+싱글톤으로 선언된 GCManager 객체를 전달하면, 내부에서 객체를 동적으로 생성한 뒤  
+해당 객체를 GCManager에 등록 대상으로 등록시켜줍니다.
 
+#### GCManager Collect
 <img src="./images/GC1.png" width="600">
 <img src="./images/GC2.png" width="600">
 
-`GCManager`에서 `Collect()`를 호출하면 다음과 같은 절차가 수행됩니다:
+GCManager에서 Collect()를 호출하면 다음과 같은 절차가 수행됩니다:
 
 1. GCObject들이 저장된 배열을 순회하며 모든 객체의 마크 여부를 초기화합니다.  
-2. 루트로 등록된 오브젝트들을 얻어온 뒤, 각각에 대해 `mark()`를 호출하여 참조 그래프를 따라 탐색합니다.  
+2. 루트로 등록된 오브젝트들을 얻어온 뒤, 각각에 대해 mark()를 호출하여 참조 그래프를 따라 탐색합니다.  
 3. 스윕 단계에서는 루트가 아니며 마킹되지 않은 객체들을 실제로 해제합니다.
 
+#### GCObject mark, markRecursive
 <img src="./images/GC3.png" width="600">
 <img src="./images/GC4.png" width="600">
 
-`GCObject`의 마크 단계에서는 자신이 가지고 있는 **모든 프로퍼티를 순회**하고,  
-해당 프로퍼티의 타입이 다음 중 하나인 경우에 대해 `mark()`를 **전파**합니다:
+GCObject의 마크 단계에서는 자신이 가지고 있는 **모든 프로퍼티를 순회**하고,  
+해당 프로퍼티의 타입이 다음 중 하나인 경우에 대해 mark()를 **전파**합니다:
 
-- `GCObject*` 포인터 타입
-- 이터레이션 가능한 타입이면서 요소 타입이 `GCObject`인 경우
+- GCObject* 포인터 타입
+- 이터레이션 가능한 타입이면서 요소 타입이 GCObject인 경우
 
-이러한 타입 판별은 리플렉션 기반의 `Property` 메타데이터에서 `TypeInfo`를 통해 이루어지며,  
+이러한 타입 판별은 리플렉션 기반의 Property 메타데이터에서 TypeInfo를 통해 이루어지며,  
 이터러블 타입인 경우에는 이터레이터를 통해 각각의 요소를 순회하여 GCObject인 경우에만 재귀적으로 마크를 전파합니다.
 
 이 구조는 리플렉션 메타데이터를 기반으로 GC 대상 여부를 동적으로 판단할 수 있게 하며,  
@@ -162,8 +150,8 @@
 
 <img src="./images/TestTypeInfo.png" width="600">
 
-- `Cat` 인스턴스를 `Animal*`로 참조한 후,  
-  리플렉션을 통해 **실제 타입(`Cat`)과 상속 관계를 판별**할 수 있는지 확인합니다.
+- Cat 인스턴스를 Animal*로 참조한 후,  
+  리플렉션을 통해 **실제 타입(Cat)과 상속 관계를 판별**할 수 있는지 확인합니다.
 
 ### 프로퍼티 시스템 테스트
 
@@ -171,7 +159,7 @@
 <img src="./images/TestProperty2.png" width="600">
 
 - 필드의 이름과 타입을 조회할 수 있으며,  
-  **이름 기반으로 `Get`/`Set`을 호출**할 수 있습니다.
+  **이름 기반으로 Get/Set을 호출**할 수 있습니다.
 
 ### 메서드 등록 및 호출 테스트
 
