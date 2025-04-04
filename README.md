@@ -47,19 +47,35 @@
 - 배열 여부
 - 이터레이터 가능 여부
 
+> 💡 아래 코드는 클래스 내부에서 static TypeInfo를 선언하고 초기화하는 방식입니다.
+
+#### 🔹 타입 정보 매크로 예시
+
 <div align="center">
   <img src="./images/TypeInfo1.png" width="600">
 </div>
-<img src="./images/TypeInfo2.png" width="600">
 
 타입 정보 매크로는 현재 클래스의 `ThisType`을 선언하기 전에, 부모 클래스로부터 선언된 `ThisType`을 통해 부모 타입 정보를 취득합니다.  
 부모 타입이 존재하지 않을 경우, 부모 타입은 `void`로 설정됩니다.
 
+> 💡 TypeInfo는 inline static 지역변수로 중복 없이 선언됩니다.
+
+#### 🔸 부모 타입 접근 구조
+
+<div align="center">
+  <img src="./images/TypeInfo2.png" width="600">
+</div>
+
 매크로는 `static` 지역 변수로 `TypeInfo`를 생성하며, `inline static`으로 선언된 멤버를 통해 실행 시점에 곧바로 초기화되고 중복 생성이 방지됩니다.  
 이렇게 획득한 참조를 통해 클래스 타입과 인스턴스 모두에서 `TypeInfo`에 접근할 수 있도록 다형적인 접근 인터페이스를 제공합니다.
-이때 `inline static` 멤버는 클래스 정의 내부에서 초기화할 수 있으며 외부에 따로 정의할 필요가 없습니다.
 
-<img src="./images/TypeInfo3.png" width="600">
+> 💡 상속 관계 확인을 위한 IsA, IsChildOf 함수 구조
+
+#### 🔹 상속 판별 함수 구조
+
+<div align="center">
+  <img src="./images/TypeInfo3.png" width="600">
+</div>
 
 상속 구조는 `IsA` 함수를 통해 정적으로 정의된 두 `TypeInfo` 인스턴스의 주소를 비교하여 판별됩니다.  
 단, 다른 DLL 간에서는 동일한 `TypeInfo`라도 인스턴스 주소가 다르므로, 해시 값을 추가로 비교하여 동일 타입 여부를 확인합니다.  
