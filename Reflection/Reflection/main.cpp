@@ -20,6 +20,25 @@ void TestMethod(void);
 void TestGC(void);
 void TestRPC(void);
 
+class TestClass
+{
+	static int& GetNum1()
+	{
+		// 이 함수는 호출해야 초기화 되지만
+		static int num{ 10 };
+		return num;
+	}
+	static int& GetNum2()
+	{
+		// 이 함수는 inline static 맴버로 인해 실행하자마자 초기화 됨
+		static int num{ 10 };
+		return num;
+	}
+
+	inline static int& a = GetNum2();
+};
+
+
 int main()
 {
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
@@ -131,7 +150,7 @@ public:
 	}
 
 	METHOD(SetName)
-		void SetName(const std::string& name)
+		void SetName(std::string& name)
 	{
 		mName = name;
 	}

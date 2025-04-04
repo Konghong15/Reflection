@@ -160,7 +160,8 @@ public:
 	template <typename T> requires std::is_pointer_v<T>&& HasStaticTypeInfo<std::remove_pointer_t<T>>
 	static const TypeInfo& GetStaticTypeInfo()
 	{
-		return std::remove_pointer_t<T>::StaticTypeInfo();
+		static TypeInfo typeInfo{ TypeInfoInitializer<T>(ExtractTypeName<T>()) };
+		return typeInfo;
 	}
 	template <typename T> requires (!HasStaticTypeInfo<T>) && (!HasStaticTypeInfo<std::remove_pointer_t<T>>)
 		static const TypeInfo& GetStaticTypeInfo()
@@ -210,8 +211,8 @@ public:
 	inline bool IsPointer() const;
 	inline size_t GetSize() const;
 
-	inline bool IsIterable() const { return mIsIterable; }
-	inline const TypeInfo* GetIteratorElementType() const { return mIteratorElementType; }
+	inline bool IsIterable() const;
+	inline const TypeInfo* GetIteratorElementType() const;
 
 private:
 	void addMethod(const Method* method);
@@ -256,13 +257,17 @@ inline bool TypeInfo::IsA(const TypeInfo& other) const
 inline bool TypeInfo::IsChildOf(const TypeInfo& other) const
 {
 	if (IsA(other))
+	{
 		return true;
+	}
 
 	for (const TypeInfo* superOrNull = mSuper; superOrNull != nullptr; superOrNull = superOrNull->GetSuperOrNull())
 	{
 		assert(superOrNull != nullptr);
 		if (superOrNull->IsA(other))
+		{
 			return true;
+		}
 	}
 
 	return false;
@@ -339,4 +344,14 @@ inline bool TypeInfo::IsPointer() const
 inline size_t TypeInfo::GetSize() const
 {
 	return mSize;
+}
+
+inline bool TypeInfo::IsIterable() const
+{
+	return mIsIterable;
+}
+
+inline const TypeInfo* TypeInfo::GetIteratorElementType() const
+{
+	return mIteratorElementType;
 }

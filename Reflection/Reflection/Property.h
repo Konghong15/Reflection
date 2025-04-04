@@ -193,8 +193,6 @@ private:
 
 class BaseIteratorHandler
 {
-	GENERATE_TYPE_INFO(BaseIteratorHandler)
-
 public:
 	virtual ~BaseIteratorHandler() = default;
 	virtual std::unique_ptr<IteratorWrapperBase> Begin(void* object) const = 0;
@@ -204,8 +202,6 @@ public:
 template <typename T>
 class TemplateIteratorHandler : public BaseIteratorHandler
 {
-	GENERATE_TYPE_INFO(TemplateIteratorHandler)
-
 public:
 	using Iterator = decltype(std::declval<T>().begin());
 
@@ -455,8 +451,6 @@ class PropertyRegister
 public:
 	PropertyRegister(const char* name, TypeInfo& typeInfo)
 	{
-		using ElementType = std::remove_all_extents_t<T>;
-
 		if constexpr (std::is_member_pointer_v<TPtr>)
 		{
 			static PropertyHandler<TClass, T> handler(ptr);

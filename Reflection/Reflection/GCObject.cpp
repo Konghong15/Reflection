@@ -31,11 +31,11 @@ void GCObject::markRecursive(void* object, const Property* property)
 	// 1. 마킹 처리
 	const TypeInfo& typeInfo = property->GetTypeInfo();
 
-	if (typeInfo.IsPointer() && typeInfo.IsChildOf<GCObject>())
+	if (typeInfo.IsChildOf<GCObject*>())
 	{
-		static_cast<GCObject*>(object)->sertMarked(true);
+		static_cast<GCObject*>(object)->mark();
 	}
-	if (typeInfo.IsIterable() && typeInfo.GetIteratorElementType()->IsChildOf<GCObject>())
+	if (typeInfo.IsIterable() && typeInfo.GetIteratorElementType()->IsChildOf<GCObject*>())
 	{
 		std::unique_ptr<IteratorWrapperBase> beginIter = property->CreateIteratorBegin<GCObject*>(object);
 		std::unique_ptr<IteratorWrapperBase> endIter = property->CreateIteratorEnd<GCObject*>(object);
@@ -46,7 +46,7 @@ void GCObject::markRecursive(void* object, const Property* property)
 
 			if (gcObject != nullptr)
 			{
-				gcObject->sertMarked(true);
+				gcObject->mark();
 			}
 
 			beginIter->Increment();

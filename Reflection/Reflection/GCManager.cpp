@@ -37,9 +37,9 @@ void GCManager::Collect()
 	std::vector<GCObject*> rootObjects;
 	rootObjects.reserve(128);
 
-	//-------------------- MARK --------------------
 	auto markStart = high_resolution_clock::now();
 
+	//-------------------- MARK --------------------
 	for (size_t i = 0; i < OBJECT_COUNT; ++i)
 	{
 		mGCObjects[i]->sertMarked(false);
@@ -59,9 +59,9 @@ void GCManager::Collect()
 	auto markMs = duration_cast<milliseconds>(markEnd - markStart).count();
 	auto markUs = duration_cast<microseconds>(markEnd - markStart).count();
 
-	//-------------------- SWEEP --------------------
 	auto sweepStart = high_resolution_clock::now();
 
+	//-------------------- SWEEP --------------------
 	for (int i = static_cast<int>(OBJECT_COUNT) - 1; i >= 0; --i)
 	{
 		if (mGCObjects[i]->IsRoot())
