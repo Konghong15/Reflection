@@ -47,7 +47,9 @@
 - 배열 여부
 - 이터레이터 가능 여부
 
-<img src="./images/TypeInfo1.png" width="600">
+<div align="center">
+  <img src="./images/TypeInfo1.png" width="600">
+</div>
 <img src="./images/TypeInfo2.png" width="600">
 
 타입 정보 매크로는 현재 클래스의 `ThisType`을 선언하기 전에, 부모 클래스로부터 선언된 `ThisType`을 통해 부모 타입 정보를 취득합니다.  
