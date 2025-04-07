@@ -181,6 +181,34 @@ public:
 		--mElementCount;
 	}
 
+	void Swap(size_t indexA, size_t indexB)
+	{
+		assert(indexA < mElementCount && "indexA out of range");
+		assert(indexB < mElementCount && "indexB out of range");
+
+		if (indexA != indexB)
+		{
+			std::swap(mElements[indexA], mElements[indexB]);
+		}
+	}
+	
+	void ShrinkTo(size_t newSize)
+	{
+		assert(newSize <= mElementCount && "newSize exceeds current size");
+		mElementCount = newSize;
+	}
+
+	void MoveChunkByMemcpy(size_t dstIndex, size_t srcIndex, size_t count)
+	{
+		assert(dstIndex + count <= mElementCount && "Destination out of bounds");
+		assert(srcIndex + count <= mElementCount && "Source out of bounds");
+
+		if (count == 0 || dstIndex == srcIndex)
+			return;
+
+		std::memmove(&mElements[dstIndex], &mElements[srcIndex], sizeof(T) * count);
+	}
+
 	T& First() { return mElements[0]; }
 	const T& First() const { return mElements[0]; }
 
