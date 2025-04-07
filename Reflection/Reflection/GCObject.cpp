@@ -19,7 +19,8 @@ void GCObject::mark()
 
 	setMarked(true);
 
-	for (const Property* property : GetTypeInfo().GetProperties())
+	const TypeInfo& typeInfo = GetTypeInfo();
+	for (const Property* property : typeInfo.GetProperties())
 	{
 		void* propPtr = property->GetRawPointer(this);
 		markRecursive(propPtr, property);
@@ -33,7 +34,12 @@ void GCObject::markRecursive(void* object, const Property* property)
 
 	if (typeInfo.IsChildOf<GCObject*>())
 	{
-		static_cast<GCObject*>(object)->mark();
+		GCObject** gcObject = static_cast<GCObject**>(object);
+
+		if (*gcObject != nullptr)
+		{
+			(*gcObject)->mark();
+		}
 	}
 	if (typeInfo.IsIterable() && typeInfo.GetIteratorElementType()->IsChildOf<GCObject*>())
 	{

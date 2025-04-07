@@ -220,7 +220,14 @@ void TestMethod(void)
 class TempObject : public GCObject
 {
 	GENERATE_TYPE_INFO(TempObject)
+		PROPERTY(mPrev)
+		PROPERTY(mNext)
+		PROPERTY(mNeighbor)
+
 public:
+	GCObject* mPrev = nullptr;
+	GCObject* mNext = nullptr;
+	GCObject* mNeighbor[2] = { nullptr, nullptr };
 };
 
 class GameInstance : public GCObject
@@ -228,31 +235,78 @@ class GameInstance : public GCObject
 	GENERATE_TYPE_INFO(GameInstance)
 
 public:
-	void CreateTenThousandObjects()
+	void CreateReferenceChain()
 	{
-		mGCObjectsInVec.resize(OBJECT_COUNT, nullptr);
+		mGCObjectsInVec.resize(OBJECT_COUNT, nullptr);  // 깊이 10 * 개수
+		const size_t DEPTH = 10;
 
-		for (int i = 0; i < OBJECT_COUNT; ++i)
+		for (int i = 0; i < OBJECT_COUNT / DEPTH; ++i)
 		{
-			mGCObjects.Add(NewGCObject<TempObject>(GCManager::Get()));
-			mGCObjectsInVec[i] = NewGCObject<TempObject>(GCManager::Get());
+			TempObject* chain[DEPTH];
+
+			for (int j = 0; j < DEPTH; ++j)
+			{
+				chain[j] = NewGCObject<TempObject>(GCManager::Get());
+				mGCObjects.Add(chain[j]);
+				mGCObjectsInVec[i * DEPTH + j] = chain[j];
+			}
+
+			// prev/next + neighbor 연결
+			for (int j = 0; j < DEPTH; ++j)
+			{
+				TempObject* current = static_cast<TempObject*>(chain[j]);
+
+				if (j > 0)
+				{
+					TempObject* left = static_cast<TempObject*>(chain[j - 1]);
+					current->mPrev = left;
+				}
+
+				if (j < DEPTH - 1)
+				{
+					TempObject* right = static_cast<TempObject*>(chain[j + 1]);
+					current->mNext = right;
+				}
+			}
 		}
 	}
 
-	void ReleaseTenThousandObjects()
+	void RandomizeNeighbors()
 	{
-		const size_t SIZE = mGCObjects.GetSize();
+		for (GCObject* obj : mGCObjects)
+		{
+			if (obj->GetTypeInfo().IsChildOf<TempObject>())
+			{
+				GCObject* left = mGCObjects[rand() % OBJECT_COUNT];
+				GCObject* right = mGCObjects[rand() % OBJECT_COUNT];
 
-		for (int i = OBJECT_COUNT - 1; i >= 0; --i)
+				TempObject* tempObject = static_cast<TempObject*>(obj);
+				tempObject->mNeighbor[0] = left;
+				tempObject->mNeighbor[1] = right;
+			}
+		}
+	}
+
+	void ReleaseObjectReference()
+	{
+		const size_t totalCount = OBJECT_COUNT;
+
+		for (int i = totalCount - 1; i >= 0; --i)
 		{
 			mGCObjects[i] = nullptr;
 			mGCObjects.RemoveLast();
+		}
+
+		for (size_t i = 0; i < mGCObjectsInVec.size(); ++i)
+		{
 			mGCObjectsInVec[i] = nullptr;
 		}
+
+		mGCObjectsInVec.clear();
 	}
 
 private:
-	enum { OBJECT_COUNT = 5000 };
+	enum { OBJECT_COUNT = 10000 };
 	PROPERTY(mGCObjects)
 		FixedVector<GCObject*, OBJECT_COUNT> mGCObjects;
 	PROPERTY(mGCObjectsInVec)
@@ -271,7 +325,8 @@ void TestGC(void)
 	{
 		gameInstances[i] = NewGCObject<GameInstance>(GCManager::Get());
 		gameInstances[i]->SetRoot(true);
-		gameInstances[i]->CreateTenThousandObjects();
+		gameInstances[i]->CreateReferenceChain();
+		gameInstances[i]->RandomizeNeighbors();
 	}
 
 	GCManager::Get().Collect();
@@ -281,7 +336,7 @@ void TestGC(void)
 	// 2. 10만개 오브젝트 GC 처리
 	for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
 	{
-		gameInstances[i]->ReleaseTenThousandObjects();
+		gameInstances[i]->ReleaseObjectReference();
 	}
 
 	GCManager::Get().Collect();
@@ -291,8 +346,17 @@ void TestGC(void)
 	// 3. 멀티 스레드 테스트
 	for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
 	{
-		gameInstances[i]->CreateTenThousandObjects();
-		gameInstances[i]->ReleaseTenThousandObjects();
+		gameInstances[i]->CreateReferenceChain();
+		gameInstances[i]->RandomizeNeighbors();
+	}
+
+	GCManager::Get().Collect();
+	assert(lastInfo.RootObjectCount == 10);
+	assert(lastInfo.DeletedObjects == 0);
+
+	for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
+	{
+		gameInstances[i]->ReleaseObjectReference();
 	}
 
 	GCManager::Get().CollectMultiThread();
