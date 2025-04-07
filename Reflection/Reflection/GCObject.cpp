@@ -17,7 +17,7 @@ void GCObject::mark()
 		return;
 	}
 
-	sertMarked(true);
+	setMarked(true);
 
 	for (const Property* property : GetTypeInfo().GetProperties())
 	{

@@ -226,7 +226,7 @@ public:
 	}
 };
 
-using PrintFuncPtr = void(*)(void*);
+using PrintFuncPtr = void(*)(void*, int);
 
 struct PropertyInitializer
 {
@@ -368,7 +368,6 @@ public:
 	inline bool HasIterator() const;
 
 private:
-	using PrintFuncPtr = void(*)(void*);
 
 	const char* mName = nullptr;
 	const TypeInfo& mType;
@@ -380,23 +379,27 @@ private:
 inline void Property::PrintPropertyValue(void* object, int indent) const
 {
 	std::string indentStr(indent * 4, ' ');
-	std::cout
-		<< indentStr
-		<< "Type: " << mType.GetName()
-		<< ", Name: " << mName;
+	void* valuePtr = mHandler.GetRawPointer(object);
 
-	mPrintFunc(mHandler.GetRawPointer(object));
-	std::cout << std::endl;
+	std::cout
+		<< indentStr << "{\n"
+		<< indentStr << "    \"Type\": \"" << mType.GetName() << "\",\n"
+		<< indentStr << "    \"Name\": \"" << mName << "\",\n"
+		<< indentStr << "    \"Value\": ";
+
+	mPrintFunc(valuePtr, indent);
+
+	std::cout << "\n" << indentStr << "}";
 }
 
 inline void Property::PrintProperty(int indent) const
 {
 	std::string indentStr(indent * 4, ' ');
 
-	std::cout
-		<< indentStr
-		<< "Type: " << mType.GetName()
-		<< ", Name: " << mName << "\n";
+	std::cout << indentStr << "{\n";
+	std::cout << indentStr << "    \"Type\": \"" << mType.GetName() << "\",\n";
+	std::cout << indentStr << "    \"Name\": \"" << mName << "\"\n";
+	std::cout << indentStr << "}\n";
 }
 
 inline const char* Property::GetName() const
@@ -420,8 +423,8 @@ inline void Property::SetIteratorHandler(BaseIteratorHandler* handler)
 }
 
 inline bool Property::HasIterator() const
-{ 
-	return mIteratorHandler != nullptr; 
+{
+	return mIteratorHandler != nullptr;
 }
 
 // 인스턴스의 맴버값 출력 함수(컴파일 타임에 함수 포인터 캡처함)
@@ -432,16 +435,39 @@ concept OstreamWritable = requires(std::ostream & os, T value)
 };
 
 template <typename T>
-void Print(void* object)
+void Print(void* object, int indent)
 {
-	if constexpr (OstreamWritable<T>)
+	T* value = static_cast<T*>(object);
+	std::string indentStr(indent * 4, ' ');
+	std::string innerIndentStr((indent + 1) * 4, ' ');
+
+	if constexpr (IsIterable<T>::value)
 	{
-		T* value = static_cast<T*>(object);
-		std::cout << ", Value : " << *value;
+		std::cout << "[\n";
+
+		bool first = true;
+		for (const auto& elem : *value)
+		{
+			if (!first)
+				std::cout << ",\n";
+			first = false;
+
+			std::cout << innerIndentStr;
+			if constexpr (OstreamWritable<std::decay_t<decltype(elem)>>)
+				std::cout << "\"" << elem << "\"";
+			else
+				std::cout << "\"<?>\"";
+		}
+
+		std::cout << "\n" << indentStr << "]";
+	}
+	else if constexpr (OstreamWritable<T>)
+	{
+		std::cout << "\"" << *value << "\"";
 	}
 	else
 	{
-		std::cout << ", Value : None ";
+		std::cout << "\"None\"";
 	}
 }
 

@@ -181,12 +181,12 @@ public:
 		return IsChildOf(GetStaticTypeInfo<T>());
 	}
 
+	void PrintTypeInfo(int indent = 0) const;
+	void PrintTypeInfoValues(void* object, int indent = 0) const;
 	void PrintMethods(int indent = 0) const;
 	void PrintProcedures(int indent = 0) const;
 	void PrintProperties(int indent = 0) const;
-	void PrintPropertiesRecursive(int indent = 0) const;
 	void PrintPropertyValues(void* object, int indent = 0) const;
-	void PrintPropertyValuesRecursive(void* object, int indent = 0) const;
 
 	inline bool IsA(const TypeInfo& other) const;
 	inline bool IsChildOf(const TypeInfo& other) const;

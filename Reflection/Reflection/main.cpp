@@ -74,6 +74,20 @@ class Cat : public Animal
 	GENERATE_TYPE_INFO(Cat)
 };
 
+template <typename T>
+std::ostream& operator<<(std::ostream& os, const std::vector<T>& vec)
+{
+	os << "[";
+	for (size_t i = 0; i < vec.size(); ++i)
+	{
+		os << vec[i];
+		if (i != vec.size() - 1)
+			os << ", ";
+	}
+	os << "]";
+	return os;
+}
+
 void TestTypeInfo(void)
 {
 	Cat cat;
@@ -84,6 +98,7 @@ void TestTypeInfo(void)
 
 	assert(animalPtr->GetTypeInfo().IsA <Cat>());
 	assert(animalPtr->GetTypeInfo().IsA(Cat::StaticTypeInfo()));
+
 }
 
 struct Vector2
@@ -92,7 +107,7 @@ struct Vector2
 		PROPERTY(x)
 		PROPERTY(y)
 public:
-	Vector2() = default;
+	Vector2() : x(0), y(0) {}
 	Vector2(float inX, float inY) : x(inX), y(inY) {}
 
 public:
@@ -104,6 +119,17 @@ public:
 		os << "Vector2(" << vec.x << ", " << vec.y << ")";
 		return os;
 	}
+};
+
+struct ArrayTest
+{
+	GENERATE_TYPE_INFO(ArrayTest)
+		PROPERTY(mVectorsinVec)
+		PROPERTY(mVectors)
+
+public:
+	std::vector<Vector2> mVectorsinVec;
+	FixedVector<Vector2, 10> mVectors;
 };
 
 void TestProperty(void)
@@ -132,6 +158,16 @@ void TestProperty(void)
 	assert(FloatEqual(propY->Get<float>(&vec2), SET_Y));
 
 	vec2.GetTypeInfo().PrintPropertyValues(&vec2);
+
+	ArrayTest arrayTest;
+	arrayTest.mVectorsinVec.push_back({ 1, 5 });
+	arrayTest.mVectorsinVec.push_back({ 10, 3 });
+	arrayTest.mVectorsinVec.push_back({ 12, 51 });
+	arrayTest.mVectors.Add({ 5, 2 });
+	arrayTest.mVectors.Add({ 2, 3 });
+	arrayTest.mVectors.Add({ 3, 6 });
+	arrayTest.GetTypeInfo().PrintPropertyValues(&arrayTest);
+	arrayTest.GetTypeInfo().PrintTypeInfoValues(&arrayTest);
 }
 
 class Person
@@ -178,7 +214,7 @@ void TestMethod(void)
 	setter->Invoke<void>(&person, SET_NAME);
 	assert(person.GetName() == SET_NAME);
 
-	Person::StaticTypeInfo().PrintMethods();
+	Person::StaticTypeInfo().PrintTypeInfo();
 }
 
 class TempObject : public GCObject

@@ -42,7 +42,7 @@ void GCManager::Collect()
 	//-------------------- MARK --------------------
 	for (size_t i = 0; i < OBJECT_COUNT; ++i)
 	{
-		mGCObjects[i]->sertMarked(false);
+		mGCObjects[i]->setMarked(false);
 
 		if (mGCObjects[i]->IsRoot())
 		{
@@ -132,7 +132,7 @@ void GCManager::CollectMultiThread()
 
 	for (size_t i = 0; i < OBJECT_COUNT; ++i)
 	{
-		mGCObjects[i]->sertMarked(false);
+		mGCObjects[i]->setMarked(false);
 
 		if (mGCObjects[i]->IsRoot())
 		{
@@ -150,46 +150,51 @@ void GCManager::CollectMultiThread()
 	auto markUs = duration_cast<microseconds>(markEnd - markStart).count();
 
 	//-------------------- SWEEP --------------------
+	
 	auto sweepStart = high_resolution_clock::now();
-	const size_t THREAD_COUNT = std::thread::hardware_concurrency()/2; // 보통 4~16
+	const size_t THREAD_COUNT = std::thread::hardware_concurrency() / 2; // 보통 4~16
 	const size_t CHUNK_SIZE = OBJECT_COUNT / THREAD_COUNT;
 
-	std::vector<std::future<size_t>> futures;
+	std::vector<std::future<std::vector<size_t>>> futures;
 
 	for (size_t t = 0; t < THREAD_COUNT; ++t)
 	{
 		size_t begin = t * CHUNK_SIZE;
 		size_t end = (t == THREAD_COUNT - 1) ? OBJECT_COUNT : (t + 1) * CHUNK_SIZE;
 
-		futures.push_back(mThreadPool.Enqueue([this, begin, end]() -> size_t {
-			size_t localDeleted = 0;
+		futures.push_back(mThreadPool.Enqueue([this, begin, end]() -> std::vector<size_t> {
+			std::vector<size_t> indicesToDelete;
 
 			for (size_t i = begin; i < end; ++i)
 			{
 				GCObject* obj = mGCObjects[i];
 				if (!obj || obj->IsRoot() || obj->isMarked()) continue;
 
-				delete obj;
-				mGCObjects[i] = nullptr;
-				++localDeleted;
+				indicesToDelete.push_back(i);
 			}
-			return localDeleted;
+
+			return indicesToDelete;
 			}));
 	}
 
-	size_t deletedCount = 0;
+	// 인덱스 취합
+	std::vector<size_t> allIndicesToDelete;
 	for (auto& f : futures)
 	{
-		deletedCount += f.get(); // 각 작업 결과를 합산
+		std::vector<size_t> localIndices = f.get();
+		allIndicesToDelete.insert(allIndicesToDelete.end(),
+			std::make_move_iterator(localIndices.begin()),
+			std::make_move_iterator(localIndices.end()));
 	}
 
-	// Remove nullptrs (single-threaded)
-	for (int i = static_cast<int>(mGCObjects.GetSize()) - 1; i >= 0; --i)
+	std::sort(allIndicesToDelete.begin(), allIndicesToDelete.end(), std::greater<size_t>());
+	size_t deletedCount = 0;
+	for (size_t i : allIndicesToDelete)
 	{
-		if (mGCObjects[i] == nullptr)
-		{
-			mGCObjects.RemoveAtSwapLast(i);
-		}
+		delete mGCObjects[i];
+		mGCObjects[i] = nullptr;
+		++deletedCount;
+		mGCObjects.RemoveAtSwapLast(i);
 	}
 
 	auto sweepEnd = high_resolution_clock::now();

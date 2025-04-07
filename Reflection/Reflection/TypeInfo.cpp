@@ -5,105 +5,164 @@
 #include "Method.h"
 #include "Procedure.h"
 
+void TypeInfo::PrintTypeInfo(int indent) const
+{
+	std::string indentStr(indent * 4, ' ');
+	std::cout << indentStr << "{\n";
+
+	// TypeName 출력
+	std::cout << indentStr << "    \"TypeName\": \"" << GetName() << "\",\n";
+
+	// 재사용된 출력 함수들
+	PrintProperties(indent + 1);
+
+	if (!GetMethods().empty())
+	{
+		std::cout << ",\n";
+		PrintMethods(indent + 1);
+	}
+
+	if (!GetProcedures().empty())
+	{
+		std::cout << ",\n";
+		PrintProcedures(indent + 1);
+	}
+
+	std::cout << "\n" << indentStr << "}\n";
+}
+
+void TypeInfo::PrintTypeInfoValues(void* object, int indent) const
+{
+	std::string indentStr(indent * 4, ' ');
+	std::cout << indentStr << "{\n";
+
+	// TypeName 출력
+	std::cout << indentStr << "    \"TypeName\": \"" << GetName() << "\",\n";
+
+	// 재사용된 출력 함수들
+	PrintPropertyValues(object, indent + 1);
+
+	if (!GetMethods().empty())
+	{
+		std::cout << ",\n";
+		PrintMethods(indent + 1);
+	}
+
+	if (!GetProcedures().empty())
+	{
+		std::cout << ",\n";
+		PrintProcedures(indent + 1);
+	}
+
+	std::cout << "\n" << indentStr << "}\n";
+}
+
 void TypeInfo::PrintPropertyValues(void* object, int indent) const
 {
-	for (const Property* property : GetProperties())
-	{
-		property->PrintPropertyValue(object, indent);
-	}
-}
-void TypeInfo::PrintPropertyValuesRecursive(void* object, int indent) const
-{
-	for (const Property* property : GetProperties())
-	{
-		const TypeInfo& propType = property->GetTypeInfo();
+	std::string indentStr(indent * 4, ' ');
+	std::cout << indentStr << "\"Properties\": [\n";
 
-		if (!propType.GetProperties().empty())
-		{
-			void* memberPtr = property->GetRawPointer(object);
-			property->PrintProperty(indent);
-			propType.PrintPropertyValuesRecursive(memberPtr, indent + 1);
-		}
-		else
-		{
-			property->PrintPropertyValue(object, indent);
-		}
+	bool first = true;
+	for (const Property* property : GetProperties())
+	{
+		if (!first)
+			std::cout << ",\n";
+		first = false;
+
+		property->PrintPropertyValue(object, indent + 1);
 	}
+
+	std::cout << "\n" << indentStr << "]\n";
 }
 
 void TypeInfo::PrintProperties(int indent) const
 {
-	for (const Property* property : GetProperties())
-	{
-		property->PrintProperty(indent);
-	}
-}
-void TypeInfo::PrintPropertiesRecursive(int indent) const
-{
-	for (const Property* property : GetProperties())
-	{
-		property->PrintProperty(indent);
-		
-		const TypeInfo& propType = property->GetTypeInfo();
+	std::string indentStr(indent * 4, ' ');
+	std::cout << indentStr << "\"Properties\": [\n";
 
-		if (!propType.GetProperties().empty())
-		{
-			propType.PrintPropertiesRecursive(indent + 1); // 재귀 호출
-		}
+	bool first = true;
+	for (const Property* property : GetProperties())
+	{
+		if (!first)
+			std::cout << ",\n";
+		first = false;
+
+		property->PrintProperty(indent + 1);
 	}
+
+	std::cout << "\n" << indentStr << "]\n";
 }
 
 void TypeInfo::PrintMethods(int indent) const
 {
 	std::string indentStr(indent * 4, ' ');
+	std::cout << indentStr << "\"Methods\": [\n";
 
+	bool firstMethod = true;
 	for (const Method* method : GetMethods())
 	{
-		std::cout
-			<< indentStr
-			<< "Method: " << method->GetName()
-			<< " -> Return: " << method->GetReturnType().GetName();
+		if (!firstMethod)
+			std::cout << ",\n";
+		firstMethod = false;
 
+		std::cout << indentStr << "    {\n";
+		std::cout << indentStr << "        \"Name\": \"" << method->GetName() << "\",\n";
+		std::cout << indentStr << "        \"Return\": \"" << method->GetReturnType().GetName() << "\"";
+
+		// Parameters
 		if (method->NumParameter() > 0)
 		{
-			std::cout << ", Params: (";
+			std::cout << ",\n" << indentStr << "        \"Params\": [";
 			for (size_t i = 0; i < method->NumParameter(); ++i)
 			{
-				std::cout << method->GetParameterType(i).GetName();
+				std::cout << "\"" << method->GetParameterType(i).GetName() << "\"";
 				if (i + 1 < method->NumParameter())
 					std::cout << ", ";
 			}
-			std::cout << ")";
+			std::cout << "]";
 		}
-		std::cout << std::endl;
+		else
+		{
+			std::cout << ",\n" << indentStr << "        \"Params\": []";
+		}
+
+		std::cout << "\n" << indentStr << "    }";
 	}
+
+	std::cout << "\n" << indentStr << "]\n";
 }
 
 void TypeInfo::PrintProcedures(int indent) const
 {
 	std::string indentStr(indent * 4, ' ');
 
+	std::cout << indentStr << "\"Procedures\": [\n";
+
+	bool firstProc = true;
 	for (const Procedure* proc : mProcedures)
 	{
-		std::cout
-			<< indentStr
-			<< "Procedure: " << proc->GetName();
+		if (!firstProc)
+			std::cout << ",\n";
+		firstProc = false;
+
+		std::cout << indentStr << "    {\n";
+		std::cout << indentStr << "        \"Name\": \"" << proc->GetName() << "\"";
 
 		size_t paramCount = proc->NumParameter();
-		if (paramCount > 0)
+		std::cout << ",\n" << indentStr << "        \"Params\": [";
+
+		for (size_t i = 0; i < paramCount; ++i)
 		{
-			std::cout << " -> Params: (";
-			for (size_t i = 0; i < paramCount; ++i)
-			{
-				std::cout << proc->GetParameterType(i).GetName();
-				if (i + 1 < paramCount)
-					std::cout << ", ";
-			}
-			std::cout << ")";
+			std::cout << "\"" << proc->GetParameterType(i).GetName() << "\"";
+			if (i + 1 < paramCount)
+				std::cout << ", ";
 		}
 
-		std::cout << std::endl;
+		std::cout << "]\n";
+		std::cout << indentStr << "    }";
 	}
+
+	std::cout << "\n" << indentStr << "]\n";
 }
 
 void TypeInfo::addMethod(const Method* method)

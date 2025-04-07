@@ -21,7 +21,7 @@ private:
 	void mark();
 	void markRecursive(void * object, const Property* property);
 
-	inline void sertMarked(bool marked);
+	inline void setMarked(bool marked);
 	inline bool isMarked() const;
 
 private:
@@ -39,7 +39,7 @@ inline bool GCObject::IsRoot() const
 	return mbRoot;
 }
 
-inline void GCObject::sertMarked(bool marked)
+inline void GCObject::setMarked(bool marked)
 {
 	mbMarked = marked;
 }
