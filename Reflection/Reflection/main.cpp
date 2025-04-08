@@ -313,7 +313,6 @@ private:
 		std::vector<GCObject*> mGCObjectsInVec;
 };
 
-
 void TestGC(void)
 {
 	const size_t TEST_INSTANCE_COUNT = 10;
@@ -324,7 +323,7 @@ void TestGC(void)
 	for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
 	{
 		gameInstances[i] = NewGCObject<GameInstance>(GCManager::Get());
-		gameInstances[i]->SetRoot(true);
+		GCManager::Get().SetRoot(gameInstances[i], true);
 		gameInstances[i]->CreateReferenceChain();
 		gameInstances[i]->RandomizeNeighbors();
 	}
@@ -366,7 +365,7 @@ void TestGC(void)
 	// 4. 루트 제거 테스트
 	for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
 	{
-		gameInstances[i]->SetRoot(false);
+		GCManager::Get().SetRoot(gameInstances[i], false);
 	}
 
 	GCManager::Get().Collect();

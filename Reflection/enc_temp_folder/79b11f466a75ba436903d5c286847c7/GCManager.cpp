@@ -117,6 +117,7 @@ void GCManager::CollectMultiThread()
 {
 }
 
+
 void GCManager::markFrom(GCObject* root)
 {
 	std::stack<GCObject*> stack;

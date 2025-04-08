@@ -36,9 +36,6 @@
     <ClCompile Include="GCManager.cpp">
       <Filter>소스 파일\GarbageCollection</Filter>
     </ClCompile>
-    <ClCompile Include="GCObject.cpp">
-      <Filter>소스 파일\GarbageCollection</Filter>
-    </ClCompile>
     <ClCompile Include="TypeInfo.cpp">
       <Filter>소스 파일\Reflection</Filter>
     </ClCompile>
@@ -70,9 +67,6 @@
     </ClInclude>
     <ClInclude Include="Procedure.h">
       <Filter>헤더 파일\Reflection</Filter>
-    </ClInclude>
-    <ClInclude Include="ThreadPool.h">
-      <Filter>헤더 파일\GarbageCollection</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
