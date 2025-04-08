@@ -55,7 +55,7 @@ void GCManager::Collect()
 
 	for (GCObject* root : rootObjects)
 	{
-		markFromRecursive(root);
+		markFrom(root);
 	}
 
 	auto markEnd = high_resolution_clock::now();
@@ -132,7 +132,7 @@ void GCManager::CollectMultiThread()
 	size_t deletedCount = 0;
 	size_t rootCount = 0;
 
-	const size_t threadCount = std::thread::hardware_concurrency();
+	const size_t threadCount = std::thread::hardware_concurrency() / 2;
 	std::vector<std::future<void>> markFutures;
 	std::vector<std::future<ValidRange>> sweepFutures;
 	markFutures.reserve(threadCount);
@@ -164,14 +164,14 @@ void GCManager::CollectMultiThread()
 		markFutures.emplace_back(std::async(std::launch::async, [this, &rootObjects, begin, end]() {
 			for (size_t i = begin; i < end; ++i)
 			{
-				markFromRecursive(rootObjects[i]);
+				markFrom(rootObjects[i]);
 			}
 			}));
 	}
 
-	for (auto& f : markFutures)
+	for (auto& markFuture : markFutures)
 	{
-		f.get();
+		markFuture.get();
 	};
 
 	auto markEnd = high_resolution_clock::now();
@@ -216,13 +216,16 @@ void GCManager::CollectMultiThread()
 	}
 
 	size_t destIndex = 0;
+
 	for (auto& sweepFuture : sweepFutures)
 	{
 		ValidRange validRange = sweepFuture.get();
 		assert(sweepChunkSize >= validRange.DeleteCount);
-		deletedCount += validRange.DeleteCount;
+
 		const size_t copyLength = validRange.EndIndex - validRange.StartIndex - validRange.DeleteCount;
 		mGCObjects.MoveChunkByMemcpy(destIndex, validRange.StartIndex, copyLength);
+		
+		deletedCount += validRange.DeleteCount;
 		destIndex += copyLength; 
 	};
 

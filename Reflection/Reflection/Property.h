@@ -441,7 +441,67 @@ void Print(void* object, int indent)
 	std::string indentStr(indent * 4, ' ');
 	std::string innerIndentStr((indent + 1) * 4, ' ');
 
-	if constexpr (IsIterable<T>::value)
+	using DerefT = std::remove_pointer_t<T>;
+
+	if constexpr (std::is_pointer_v<T>)
+	{
+		if (*value == nullptr)
+		{
+			std::cout << "\"nullptr\"";
+		}
+		else if constexpr (IsIterable<DerefT>::value)
+		{
+			std::cout << "[\n";
+
+			bool first = true;
+			for (const auto& elem : **value)
+			{
+				if (!first)
+				{
+					std::cout << ",\n";
+				}
+				first = false;
+
+				std::cout << innerIndentStr;
+
+				using ElemT = std::decay_t<decltype(elem)>;
+				if constexpr (std::is_pointer_v<ElemT>)
+				{
+					if (elem == nullptr)
+					{
+						std::cout << "\"nullptr\"";
+					}
+					else if constexpr (OstreamWritable<std::remove_pointer_t<ElemT>>)
+					{
+						std::cout << "\"" << *elem << "\"";
+					}
+					else
+					{
+						std::cout << "\"<?>\"";
+					}
+				}
+				else if constexpr (OstreamWritable<ElemT>)
+				{
+					std::cout << "\"" << elem << "\"";
+				}
+				else
+				{
+					std::cout << "\"<?>\"";
+				}
+			}
+
+			std::cout << "\n" << indentStr << "]";
+		}
+		else if constexpr (OstreamWritable<DerefT>)
+		{
+			std::cout << "\"" << **value << "\"";
+		}
+		else
+		{
+			std::cout << "\"<?>\"";
+		}
+	}
+	else if constexpr (IsIterable<T>::value)
 	{
 		std::cout << "[\n";
 
@@ -449,14 +509,38 @@ void Print(void* object, int indent)
 		for (const auto& elem : *value)
 		{
 			if (!first)
+			{
 				std::cout << ",\n";
+			}
+
 			first = false;
 
 			std::cout << innerIndentStr;
-			if constexpr (OstreamWritable<std::decay_t<decltype(elem)>>)
+
+			using ElemT = std::decay_t<decltype(elem)>;
+			if constexpr (std::is_pointer_v<ElemT>)
+			{
+				if (elem == nullptr)
+				{
+					std::cout << "\"nullptr\"";
+				}
+				else if constexpr (OstreamWritable<std::remove_pointer_t<ElemT>>)
+				{
+					std::cout << "\"" << *elem << "\"";
+				}
+				else
+				{
+					std::cout << "\"<?>\"";
+				}
+			}
+			else if constexpr (OstreamWritable<ElemT>)
+			{
 				std::cout << "\"" << elem << "\"";
+			}
 			else
+			{
 				std::cout << "\"<?>\"";
+			}
 		}
 
 		std::cout << "\n" << indentStr << "]";

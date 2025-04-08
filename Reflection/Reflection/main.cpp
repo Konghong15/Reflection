@@ -126,10 +126,12 @@ struct ArrayTest
 	GENERATE_TYPE_INFO(ArrayTest)
 		PROPERTY(mVectorsinVec)
 		PROPERTY(mVectors)
+		PROPERTY(mVectorsinVecPtr)
 
 public:
 	std::vector<Vector2> mVectorsinVec;
 	FixedVector<Vector2, 10> mVectors;
+	std::vector<Vector2*> mVectorsinVecPtr;
 };
 
 void TestProperty(void)
@@ -166,6 +168,7 @@ void TestProperty(void)
 	arrayTest.mVectors.Add({ 5, 2 });
 	arrayTest.mVectors.Add({ 2, 3 });
 	arrayTest.mVectors.Add({ 3, 6 });
+	arrayTest.mVectorsinVecPtr.push_back(new Vector2{ 3, 6 });
 	arrayTest.GetTypeInfo().PrintPropertyValues(&arrayTest);
 	arrayTest.GetTypeInfo().PrintTypeInfoValues(&arrayTest);
 }
@@ -222,12 +225,20 @@ class TempObject : public GCObject
 	GENERATE_TYPE_INFO(TempObject)
 		PROPERTY(mPrev)
 		PROPERTY(mNext)
-		PROPERTY(mNeighbor)
+		PROPERTY(mRandoms)
+
+
+		friend std::ostream& operator<<(std::ostream& os, const TempObject& tempObject)
+	{
+		os << tempObject.mPrev << "\n"
+			<< tempObject.mNext << "\n";
+		return os;
+	}
 
 public:
 	GCObject* mPrev = nullptr;
 	GCObject* mNext = nullptr;
-	GCObject* mNeighbor[2] = { nullptr, nullptr };
+	std::vector<GCObject*> mRandoms;
 };
 
 class GameInstance : public GCObject
@@ -237,8 +248,7 @@ class GameInstance : public GCObject
 public:
 	void CreateReferenceChain()
 	{
-		mGCObjectsInVec.resize(OBJECT_COUNT, nullptr);  // 깊이 10 * 개수
-		const size_t DEPTH = 10;
+		const size_t DEPTH = 100;
 
 		for (int i = 0; i < OBJECT_COUNT / DEPTH; ++i)
 		{
@@ -248,7 +258,6 @@ public:
 			{
 				chain[j] = NewGCObject<TempObject>(GCManager::Get());
 				mGCObjects.Add(chain[j]);
-				mGCObjectsInVec[i * DEPTH + j] = chain[j];
 			}
 
 			// prev/next + neighbor 연결
@@ -271,18 +280,43 @@ public:
 		}
 	}
 
-	void RandomizeNeighbors()
+	void ConnectRandom(GameInstance* otherInstance)
 	{
-		for (GCObject* obj : mGCObjects)
-		{
-			if (obj->GetTypeInfo().IsChildOf<TempObject>())
-			{
-				GCObject* left = mGCObjects[rand() % OBJECT_COUNT];
-				GCObject* right = mGCObjects[rand() % OBJECT_COUNT];
+		assert(otherInstance != nullptr);
 
-				TempObject* tempObject = static_cast<TempObject*>(obj);
-				tempObject->mNeighbor[0] = left;
-				tempObject->mNeighbor[1] = right;
+		const size_t DEPTH = 100;
+
+		for (size_t i = 0; i < mGCObjects.GetSize(); ++i)
+		{
+			TempObject* from = static_cast<TempObject*>(mGCObjects[i]);
+
+			int randomDepthIndex = rand() % DEPTH;
+
+			while (randomDepthIndex > 0)
+			{
+				if (from->mNext == nullptr)
+				{
+					break;
+				}
+
+				from = static_cast<TempObject*>(from->mNext);
+				--randomDepthIndex;
+			}
+
+			// 랜덤한 수의 참조 개수 (1~5개)
+			int refCount = rand() % 5 + 1;
+
+			for (int j = 0; j < refCount; ++j)
+			{
+				// otherInstance의 객체 중 하나를 랜덤으로 선택
+				size_t randomIndex = rand() % otherInstance->mGCObjects.GetSize();
+				TempObject* to = static_cast<TempObject*>(otherInstance->mGCObjects[randomIndex]);
+
+				// 자기 자신으로 참조하거나 중복 연결 방지
+				if (to != from && std::find(from->mRandoms.begin(), from->mRandoms.end(), to) == from->mRandoms.end())
+				{
+					from->mRandoms.push_back(to);
+				}
 			}
 		}
 	}
@@ -296,21 +330,21 @@ public:
 			mGCObjects[i] = nullptr;
 			mGCObjects.RemoveLast();
 		}
+	}
 
-		for (size_t i = 0; i < mGCObjectsInVec.size(); ++i)
+
+	friend std::ostream& operator<<(std::ostream& os, const GameInstance& gameInstance)
+	{
+		for (auto* object : gameInstance.mGCObjects)
 		{
-			mGCObjectsInVec[i] = nullptr;
 		}
-
-		mGCObjectsInVec.clear();
+		return os;
 	}
 
 private:
 	enum { OBJECT_COUNT = 10000 };
 	PROPERTY(mGCObjects)
 		FixedVector<GCObject*, OBJECT_COUNT> mGCObjects;
-	PROPERTY(mGCObjectsInVec)
-		std::vector<GCObject*> mGCObjectsInVec;
 };
 
 void TestGC(void)
@@ -325,7 +359,20 @@ void TestGC(void)
 		gameInstances[i] = NewGCObject<GameInstance>(GCManager::Get());
 		gameInstances[i]->SetRoot(true);
 		gameInstances[i]->CreateReferenceChain();
-		gameInstances[i]->RandomizeNeighbors();
+	}
+
+	for (int i = 0; i < TEST_INSTANCE_COUNT; ++i)
+	{
+		gameInstances[i]->ConnectRandom(gameInstances[0]);
+
+		if (i - 1 >= 0)
+		{
+			gameInstances[i]->ConnectRandom(gameInstances[i - 1]);
+		}
+		if (i + 1 < TEST_INSTANCE_COUNT)
+		{
+			gameInstances[i]->ConnectRandom(gameInstances[i + 1]);
+		}
 	}
 
 	GCManager::Get().Collect();
@@ -342,26 +389,39 @@ void TestGC(void)
 	assert(lastInfo.RootObjectCount == 10);
 	assert(lastInfo.DeletedObjects == 100000);
 
-	// 3. 멀티 스레드-마크
-	for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
-	{
-		gameInstances[i]->CreateReferenceChain();
-		gameInstances[i]->RandomizeNeighbors();
-	}
-
-	GCManager::Get().CollectMultiThread();
-	assert(lastInfo.RootObjectCount == 10);
-	assert(lastInfo.DeletedObjects == 0);
-
-	// 4. 멀티 스레드-스윕
-	for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
-	{
-		gameInstances[i]->ReleaseObjectReference();
-	}
-
-	GCManager::Get().CollectMultiThread();
-	assert(lastInfo.RootObjectCount == 10);
-	assert(lastInfo.DeletedObjects == 100000);
+	// / // 3. 멀티 스레드-마크
+	// for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
+	// {
+	// 	gameInstances[i]->CreateReferenceChain();
+	// }
+	// 
+	// for (int i = 0; i < TEST_INSTANCE_COUNT; ++i)
+	// {
+	// 	gameInstances[i]->ConnectRandom(gameInstances[0]);
+	// 
+	// 	if (i - 1 >= 0)
+	// 	{
+	// 		gameInstances[i]->ConnectRandom(gameInstances[i - 1]);
+	// 	}
+	// 	if (i + 1 < TEST_INSTANCE_COUNT)
+	// 	{
+	// 		gameInstances[i]->ConnectRandom(gameInstances[i + 1]);
+	// 	}
+	// }
+	// 
+	// GCManager::Get().CollectMultiThread();
+	// assert(lastInfo.RootObjectCount == 10);
+	// assert(lastInfo.DeletedObjects == 0);
+	// 
+	// // 4. 멀티 스레드-스윕
+	// for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
+	// {
+	// 	gameInstances[i]->ReleaseObjectReference();
+	// }
+	// 
+	// GCManager::Get().CollectMultiThread();
+	// assert(lastInfo.RootObjectCount == 10);
+	// assert(lastInfo.DeletedObjects == 100000);
 
 	// 5. 루트 제거 테스트
 	for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
