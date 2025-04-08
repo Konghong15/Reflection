@@ -319,11 +319,11 @@ void TestGC(void)
 	GameInstance* gameInstances[TEST_INSTANCE_COUNT];
 	const GCDebugInfo& lastInfo = GCManager::Get().GetLastDebugInfo();
 
-	// 1. 아무 처리되지 않는 것 확인
+	// 1. 싱글 스레드-마크
 	for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
 	{
 		gameInstances[i] = NewGCObject<GameInstance>(GCManager::Get());
-		GCManager::Get().SetRoot(gameInstances[i], true);
+		gameInstances[i]->SetRoot(true);
 		gameInstances[i]->CreateReferenceChain();
 		gameInstances[i]->RandomizeNeighbors();
 	}
@@ -332,7 +332,7 @@ void TestGC(void)
 	assert(lastInfo.RootObjectCount == 10);
 	assert(lastInfo.DeletedObjects == 0);
 
-	// 2. 10만개 오브젝트 GC 처리
+	// 2. 싱글 스레드-스윕
 	for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
 	{
 		gameInstances[i]->ReleaseObjectReference();
@@ -342,17 +342,18 @@ void TestGC(void)
 	assert(lastInfo.RootObjectCount == 10);
 	assert(lastInfo.DeletedObjects == 100000);
 
-	// 3. 멀티 스레드 테스트
+	// 3. 멀티 스레드-마크
 	for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
 	{
 		gameInstances[i]->CreateReferenceChain();
 		gameInstances[i]->RandomizeNeighbors();
 	}
 
-	GCManager::Get().Collect();
+	GCManager::Get().CollectMultiThread();
 	assert(lastInfo.RootObjectCount == 10);
 	assert(lastInfo.DeletedObjects == 0);
 
+	// 4. 멀티 스레드-스윕
 	for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
 	{
 		gameInstances[i]->ReleaseObjectReference();
@@ -362,10 +363,10 @@ void TestGC(void)
 	assert(lastInfo.RootObjectCount == 10);
 	assert(lastInfo.DeletedObjects == 100000);
 
-	// 4. 루트 제거 테스트
+	// 5. 루트 제거 테스트
 	for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
 	{
-		GCManager::Get().SetRoot(gameInstances[i], false);
+		gameInstances[i]->SetRoot(false);
 	}
 
 	GCManager::Get().Collect();
