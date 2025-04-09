@@ -459,7 +459,7 @@ void PrintElement(const T& value, int indent)
 {
 	std::string indentStr(indent * 4, ' ');
 
-	if constexpr ( OstreamWritable<T>)
+	if constexpr (OstreamWritable<T>)
 	{
 		std::cout << "\"" << value << "\"";
 	}
@@ -515,7 +515,10 @@ void Print(void* object, int indent)
 		bool first = true;
 		for (const auto& elem : *value)
 		{
-			if (!first) std::cout << ",\n";
+			if (!first)
+			{
+				std::cout << ",\n";
+			}
 			first = false;
 
 			std::cout << innerIndentStr;

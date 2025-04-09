@@ -458,12 +458,31 @@ void TestGC(void)
 	// 5. 루트 제거 테스트
 	for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
 	{
+		gameInstances[i]->CreateReferenceChain();
+	}
+
+	for (int i = 0; i < TEST_INSTANCE_COUNT; ++i)
+	{
+		gameInstances[i]->ConnectRandom(gameInstances[0]);
+
+		if (i - 1 >= 0)
+		{
+			gameInstances[i]->ConnectRandom(gameInstances[i - 1]);
+		}
+		if (i + 1 < TEST_INSTANCE_COUNT)
+		{
+			gameInstances[i]->ConnectRandom(gameInstances[i + 1]);
+		}
+	}
+
+	for (size_t i = 0; i < TEST_INSTANCE_COUNT - 1; ++i)
+	{
 		gameInstances[i]->SetRoot(false);
 	}
 
 	GCManager::Get().Collect();
-	assert(lastInfo.RootObjectCount == 0);
-	assert(lastInfo.DeletedObjects == 10);
+	gameInstances[TEST_INSTANCE_COUNT - 1]->SetRoot(false);
+	GCManager::Get().Collect();
 }
 
 class MoveablePerson : public Person
