@@ -119,8 +119,10 @@ class ProcedureRegister
 public:
 	ProcedureRegister(const char* name, TypeInfo& typeInfo)
 	{
+		// 맴버 함수
 		if constexpr (std::is_member_function_pointer_v<TPtr>)
 		{
+			// const
 			if constexpr (is_const_member_function<TPtr>::value)
 			{
 				static ConstCallable callable(Ptr);
@@ -128,12 +130,15 @@ public:
 			}
 			else
 			{
+			// const 
 				static Callable callable(Ptr);
 				static Procedure procedure(typeInfo, Ptr, name, callable);
 			}
 		}
 		else
 		{
+
+			// static 함수
 			TClass* forTypeDeduction = nullptr;
 			static StaticCallable callable(forTypeDeduction, Ptr);
 			static Procedure procedure(typeInfo, Ptr, name, callable);

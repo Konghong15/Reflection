@@ -66,6 +66,7 @@ template <typename TClass, typename TRet, typename... TArgs>
 class ConstCallable : public ICallable<TRet, TArgs...>
 {
 	using FuncPtr = TRet(TClass::*)(TArgs...) const;
+
 public:
 	ConstCallable(FuncPtr ptr)
 		: mPtr(ptr)

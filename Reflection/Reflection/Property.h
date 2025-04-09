@@ -387,7 +387,7 @@ inline void Property::PrintPropertyValue(void* object, int indent) const
 		<< indentStr << "    \"Name\": \"" << mName << "\",\n"
 		<< indentStr << "    \"Value\": ";
 
-	mPrintFunc(valuePtr, indent);
+	mPrintFunc(valuePtr, indent + 1);
 
 	std::cout << "\n" << indentStr << "}";
 }
@@ -434,6 +434,47 @@ concept OstreamWritable = requires(std::ostream & os, T value)
 	{ os << value } -> std::same_as<std::ostream&>;
 };
 
+template <typename, typename = void>
+struct HasTypeInfo : std::false_type {};
+
+template <typename T>
+struct HasTypeInfo<T, std::void_t<decltype(T::StaticTypeInfo())>> : std::true_type {};
+
+template <typename T>
+inline constexpr bool HasTypeInfo_v = HasTypeInfo<T>::value;
+
+template <typename T>
+struct IsPrimitiveType : std::disjunction<
+	std::is_integral<T>,
+	std::is_floating_point<T>,
+	std::is_same<T, std::string>
+> {
+};
+
+template <typename T>
+inline constexpr bool IsPrimitiveType_v = IsPrimitiveType<std::remove_cv_t<T>>::value;
+
+template <typename T>
+void PrintElement(const T& value, int indent)
+{
+	std::string indentStr(indent * 4, ' ');
+
+	if constexpr ( OstreamWritable<T>)
+	{
+		std::cout << "\"" << value << "\"";
+	}
+	else if (HasTypeInfo<T>::value)
+	{
+		std::cout << "{\n";
+		T::StaticTypeInfo().PrintPropertyValues((void*)&value, indent + 1);
+		std::cout << "\n" << indentStr << "}";
+	}
+	else
+	{
+		std::cout << "\"<?>\"";
+	}
+}
+
 template <typename T>
 void Print(void* object, int indent)
 {
@@ -447,111 +488,44 @@ void Print(void* object, int indent)
 	{
 		if (*value == nullptr)
 		{
-			std::cout << "\"nullptr\"";
+			std::cout << "null";
 		}
 		else if constexpr (IsIterable<DerefT>::value)
 		{
 			std::cout << "[\n";
-
 			bool first = true;
 			for (const auto& elem : **value)
 			{
-				if (!first)
-				{
-					std::cout << ",\n";
-				}
+				if (!first) std::cout << ",\n";
 				first = false;
 
 				std::cout << innerIndentStr;
-
-				using ElemT = std::decay_t<decltype(elem)>;
-				if constexpr (std::is_pointer_v<ElemT>)
-				{
-					if (elem == nullptr)
-					{
-						std::cout << "\"nullptr\"";
-					}
-					else if constexpr (OstreamWritable<std::remove_pointer_t<ElemT>>)
-					{
-						std::cout << "\"" << *elem << "\"";
-					}
-					else
-					{
-						std::cout << "\"<?>\"";
-					}
-				}
-				else if constexpr (OstreamWritable<ElemT>)
-				{
-					std::cout << "\"" << elem << "\"";
-				}
-				else
-				{
-					std::cout << "\"<?>\"";
-				}
+				PrintElement(elem, indent + 1);
 			}
-
 			std::cout << "\n" << indentStr << "]";
-		}
-		else if constexpr (OstreamWritable<DerefT>)
-		{
-			std::cout << "\"" << **value << "\"";
 		}
 		else
 		{
-			std::cout << "\"<?>\"";
+			PrintElement(**value, indent);
 		}
 	}
 	else if constexpr (IsIterable<T>::value)
 	{
 		std::cout << "[\n";
-
 		bool first = true;
 		for (const auto& elem : *value)
 		{
-			if (!first)
-			{
-				std::cout << ",\n";
-			}
-
+			if (!first) std::cout << ",\n";
 			first = false;
 
 			std::cout << innerIndentStr;
-
-			using ElemT = std::decay_t<decltype(elem)>;
-			if constexpr (std::is_pointer_v<ElemT>)
-			{
-				if (elem == nullptr)
-				{
-					std::cout << "\"nullptr\"";
-				}
-				else if constexpr (OstreamWritable<std::remove_pointer_t<ElemT>>)
-				{
-					std::cout << "\"" << *elem << "\"";
-				}
-				else
-				{
-					std::cout << "\"<?>\"";
-				}
-			}
-			else if constexpr (OstreamWritable<ElemT>)
-			{
-				std::cout << "\"" << elem << "\"";
-			}
-			else
-			{
-				std::cout << "\"<?>\"";
-			}
+			PrintElement(elem, indent + 1);
 		}
-
 		std::cout << "\n" << indentStr << "]";
-	}
-	else if constexpr (OstreamWritable<T>)
-	{
-		std::cout << "\"" << *value << "\"";
 	}
 	else
 	{
-		std::cout << "\"None\"";
+		PrintElement(*value, indent);
 	}
 }
 

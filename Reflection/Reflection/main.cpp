@@ -111,12 +111,6 @@ public:
 public:
 	float x;
 	float y;
-
-	friend std::ostream& operator<<(std::ostream& os, const Vector2& vec)
-	{
-		os << "Vector2(" << vec.x << ", " << vec.y << ")";
-		return os;
-	}
 };
 
 struct ArrayTest
@@ -127,9 +121,24 @@ struct ArrayTest
 		PROPERTY(mVectorsinVecPtr)
 
 public:
+	friend std::ostream& operator<<(std::ostream& os, const ArrayTest& arrayTest)
+	{
+		arrayTest.GetTypeInfo().PrintPropertyValues((void*)&arrayTest);
+		return os;
+	}
+
+public:
 	std::vector<Vector2> mVectorsinVec;
 	FixedVector<Vector2, 10> mVectors;
 	std::vector<Vector2*> mVectorsinVecPtr;
+};
+
+struct RecursiveReferenceTest
+{
+	GENERATE_TYPE_INFO(RecursiveReferenceTest)
+		PROPERTY(mArrayTest)
+public:
+	std::vector<ArrayTest*> mArrayTest;
 };
 
 void TestProperty(void)
@@ -151,7 +160,8 @@ void TestProperty(void)
 
 	const Property* propY = Vector2::StaticTypeInfo().GetProperty("y");
 	assert(FloatEqual(propY->Get<float>(&vec2), INIT_Y));
-
+	auto temp = propY->GetTypeInfo();
+	
 	propX->Set(&vec2, SET_X);
 	assert(FloatEqual(propX->Get<float>(&vec2), SET_X));
 	propY->Set(&vec2, SET_Y);
@@ -174,6 +184,25 @@ void TestProperty(void)
 	{
 		delete vector;
 	}
+
+	RecursiveReferenceTest recursiveRefTest;
+	recursiveRefTest.mArrayTest.push_back(new ArrayTest());
+	recursiveRefTest.mArrayTest[0]->mVectorsinVec.push_back({ 1, 5 });
+	recursiveRefTest.mArrayTest[0]->mVectorsinVec.push_back({ 10, 3 });
+	recursiveRefTest.mArrayTest[0]->mVectorsinVec.push_back({ 12, 51 });
+	recursiveRefTest.mArrayTest[0]->mVectors.Add({ 5, 2 });
+	recursiveRefTest.mArrayTest[0]->mVectors.Add({ 2, 3 });
+	recursiveRefTest.mArrayTest[0]->mVectors.Add({ 3, 6 });
+	recursiveRefTest.mArrayTest[0]->mVectorsinVecPtr.push_back(new Vector2{ 3, 6 });
+
+	recursiveRefTest.GetTypeInfo().PrintPropertyValues(&recursiveRefTest);
+	recursiveRefTest.GetTypeInfo().PrintTypeInfoValues(&recursiveRefTest);
+
+	for (auto* vector : recursiveRefTest.mArrayTest[0]->mVectorsinVecPtr)
+	{
+		delete vector;
+	}
+	delete recursiveRefTest.mArrayTest[0];
 }
 
 class Person
