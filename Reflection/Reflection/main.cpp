@@ -45,8 +45,6 @@ int main()
 
 	GCManager::Create();
 
-	auto intType = TypeInfo::GetStaticTypeInfo<std::vector<int>::value_type>();
-
 	TestTypeInfo();
 	TestProperty();
 	TestMethod();
@@ -171,6 +169,11 @@ void TestProperty(void)
 	arrayTest.mVectorsinVecPtr.push_back(new Vector2{ 3, 6 });
 	arrayTest.GetTypeInfo().PrintPropertyValues(&arrayTest);
 	arrayTest.GetTypeInfo().PrintTypeInfoValues(&arrayTest);
+
+	for (auto* vector : arrayTest.mVectorsinVecPtr)
+	{
+		delete vector;
+	}
 }
 
 class Person
@@ -389,39 +392,39 @@ void TestGC(void)
 	assert(lastInfo.RootObjectCount == 10);
 	assert(lastInfo.DeletedObjects == 100000);
 
-	// / // 3. 멀티 스레드-마크
-	// for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
-	// {
-	// 	gameInstances[i]->CreateReferenceChain();
-	// }
-	// 
-	// for (int i = 0; i < TEST_INSTANCE_COUNT; ++i)
-	// {
-	// 	gameInstances[i]->ConnectRandom(gameInstances[0]);
-	// 
-	// 	if (i - 1 >= 0)
-	// 	{
-	// 		gameInstances[i]->ConnectRandom(gameInstances[i - 1]);
-	// 	}
-	// 	if (i + 1 < TEST_INSTANCE_COUNT)
-	// 	{
-	// 		gameInstances[i]->ConnectRandom(gameInstances[i + 1]);
-	// 	}
-	// }
-	// 
-	// GCManager::Get().CollectMultiThread();
-	// assert(lastInfo.RootObjectCount == 10);
-	// assert(lastInfo.DeletedObjects == 0);
-	// 
-	// // 4. 멀티 스레드-스윕
-	// for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
-	// {
-	// 	gameInstances[i]->ReleaseObjectReference();
-	// }
-	// 
-	// GCManager::Get().CollectMultiThread();
-	// assert(lastInfo.RootObjectCount == 10);
-	// assert(lastInfo.DeletedObjects == 100000);
+	// 3. 멀티 스레드-마크
+	for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
+	{
+		gameInstances[i]->CreateReferenceChain();
+	}
+
+	for (int i = 0; i < TEST_INSTANCE_COUNT; ++i)
+	{
+		gameInstances[i]->ConnectRandom(gameInstances[0]);
+
+		if (i - 1 >= 0)
+		{
+			gameInstances[i]->ConnectRandom(gameInstances[i - 1]);
+		}
+		if (i + 1 < TEST_INSTANCE_COUNT)
+		{
+			gameInstances[i]->ConnectRandom(gameInstances[i + 1]);
+		}
+	}
+
+	GCManager::Get().CollectMultiThread();
+	assert(lastInfo.RootObjectCount == 10);
+	assert(lastInfo.DeletedObjects == 0);
+
+	// 4. 멀티 스레드-스윕
+	for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)
+	{
+		gameInstances[i]->ReleaseObjectReference();
+	}
+
+	GCManager::Get().CollectMultiThread();
+	assert(lastInfo.RootObjectCount == 10);
+	assert(lastInfo.DeletedObjects == 100000);
 
 	// 5. 루트 제거 테스트
 	for (size_t i = 0; i < TEST_INSTANCE_COUNT; ++i)

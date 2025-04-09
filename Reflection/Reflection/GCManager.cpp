@@ -1,3 +1,4 @@
+#include <set>
 #include <algorithm>
 #include <vector>
 #include <chrono>
@@ -28,6 +29,8 @@ GCManager::~GCManager()
 
 void GCManager::Collect()
 {
+	mMaxDepth.store(0, std::memory_order_relaxed);
+
 	using namespace std::chrono;
 
 	auto startTime = high_resolution_clock::now(); // 전체 시간 측정 시작
@@ -93,24 +96,24 @@ void GCManager::Collect()
 
 	const size_t remaining = mGCObjects.GetSize();
 
-	mLastDebugInfo = {
-		totalMs,
-		totalUs,
-		objectCount,
-		deletedCount,
-		remaining,
-		rootCount
-	};
+	mLastDebugInfo.DurationMs = totalMs;
+	mLastDebugInfo.DurationUs = totalUs;
+	mLastDebugInfo.TotalObjects = objectCount;
+	mLastDebugInfo.DeletedObjects = deletedCount;
+	mLastDebugInfo.RemainingObjects = remaining;
+	mLastDebugInfo.RootObjectCount = rootCount;
+	size_t maxDepth = mMaxDepth.load(std::memory_order_relaxed);
 
 	std::ostringstream oss;
-	oss << "[GC] Start - Mode: " << "Single-threaded" << "\n"
+	oss << "[GC] Start - Mode: " << "Single-threaded\n"
 		<< "[GC] Total Time: " << totalMs << " ms (" << totalUs << " μs)\n"
 		<< " └─ Mark Phase:  " << markMs << " ms (" << markUs << " μs)\n"
 		<< " └─ Sweep Phase: " << sweepMs << " ms (" << sweepUs << " μs)\n"
 		<< "[GC] Total objects: " << objectCount << "\n"
 		<< "[GC] Root objects: " << rootCount << "\n"
 		<< "[GC] Deleted objects: " << deletedCount << "\n"
-		<< "[GC] Remaining objects: " << remaining << "\n";
+		<< "[GC] Remaining objects: " << remaining << "\n"
+		<< "[GC] Max Depth: " << maxDepth << "\n";
 
 	OutputDebugStringA(oss.str().c_str());
 }
@@ -118,6 +121,8 @@ void GCManager::Collect()
 void GCManager::CollectMultiThread()
 {
 	using namespace std::chrono;
+
+	mMaxDepth.store(0, std::memory_order_relaxed);
 
 	struct ValidRange
 	{
@@ -154,12 +159,18 @@ void GCManager::CollectMultiThread()
 		}
 	}
 
-	const size_t markCunkSize = (rootObjects.size() + threadCount - 1) / threadCount;
+	const size_t markChunkSize = (rootObjects.size() + threadCount - 1) / threadCount;
 
 	for (size_t t = 0; t < threadCount; ++t)
 	{
-		size_t begin = t * markCunkSize;
-		size_t end = std::min<size_t>(rootObjects.size(), (t + 1) * markCunkSize);
+		size_t begin = t * markChunkSize;
+
+		if (begin >= rootObjects.size())
+		{
+			break;
+		}
+
+		size_t end = std::min<size_t>(rootObjects.size(), (t + 1) * markChunkSize);
 
 		markFutures.emplace_back(std::async(std::launch::async, [this, &rootObjects, begin, end]() {
 			for (size_t i = begin; i < end; ++i)
@@ -186,6 +197,12 @@ void GCManager::CollectMultiThread()
 	for (size_t t = 0; t < threadCount; ++t)
 	{
 		size_t begin = t * sweepChunkSize;
+
+		if (begin >= objectCount)
+		{
+			break;
+		}
+
 		size_t end = std::min<size_t>(objectCount, (t + 1) * sweepChunkSize);
 
 		sweepFutures.emplace_back(std::async(std::launch::async, [this, begin, end]() -> ValidRange {
@@ -224,9 +241,9 @@ void GCManager::CollectMultiThread()
 
 		const size_t copyLength = validRange.EndIndex - validRange.StartIndex - validRange.DeleteCount;
 		mGCObjects.MoveChunkByMemcpy(destIndex, validRange.StartIndex, copyLength);
-		
+
 		deletedCount += validRange.DeleteCount;
-		destIndex += copyLength; 
+		destIndex += copyLength;
 	};
 
 	mGCObjects.ShrinkTo(mGCObjects.GetSize() - deletedCount);
@@ -242,14 +259,13 @@ void GCManager::CollectMultiThread()
 
 	const size_t remaining = mGCObjects.GetSize();
 
-	mLastDebugInfo = {
-		totalMs,
-		totalUs,
-		objectCount,
-		deletedCount,
-		remaining,
-		rootCount
-	};
+	mLastDebugInfo.DurationMs = totalMs;
+	mLastDebugInfo.DurationUs = totalUs;
+	mLastDebugInfo.TotalObjects = objectCount;
+	mLastDebugInfo.DeletedObjects = deletedCount;
+	mLastDebugInfo.RemainingObjects = remaining;
+	mLastDebugInfo.RootObjectCount = rootCount;
+	size_t maxDepth = mMaxDepth.load(std::memory_order_relaxed);
 
 	std::ostringstream oss;
 	oss << "[GC] Start - Mode: " << "Multi-threaded : " << threadCount << "\n"
@@ -259,28 +275,28 @@ void GCManager::CollectMultiThread()
 		<< "[GC] Total objects: " << objectCount << "\n"
 		<< "[GC] Root objects: " << rootCount << "\n"
 		<< "[GC] Deleted objects: " << deletedCount << "\n"
-		<< "[GC] Remaining objects: " << remaining << "\n";
+		<< "[GC] Remaining objects: " << remaining << "\n"
+		<< "[GC] Max Depth: " << maxDepth << "\n";
 
 	OutputDebugStringA(oss.str().c_str());
 }
 
 void GCManager::markFrom(GCObject* root)
 {
-	std::vector<GCObject*>& stack = mTempCacheObject;
-	stack.push_back(root);
+	std::vector<std::pair<GCObject*, size_t>> stack;
+	stack.reserve(POOL_SIZE);
+
+	stack.push_back({ root, 1 });
+	root->setMarked(true);
+
+	size_t maxDepth = 1;
 
 	while (!stack.empty())
 	{
-		GCObject* current = stack.back();
+		auto [current, depth] = stack.back();
 		stack.pop_back();
 
-		if (current->isMarked())
-		{
-			continue;
-		}
-
-		current->setMarked(true);
-
+		maxDepth = std::max<size_t>(maxDepth, depth);
 		const TypeInfo& typeInfo = current->GetTypeInfo();
 
 		for (const Property* prop : typeInfo.GetProperties())
@@ -291,9 +307,9 @@ void GCManager::markFrom(GCObject* root)
 			{
 				GCObject* child = *static_cast<GCObject**>(ptr);
 
-				if (child)
+				if (child != nullptr && child->atomicMark())
 				{
-					stack.push_back(child);
+					stack.push_back({ child, depth + 1 });
 				}
 			}
 			else if (prop->GetTypeInfo().IsIterable())
@@ -305,9 +321,9 @@ void GCManager::markFrom(GCObject* root)
 				{
 					GCObject* child = *static_cast<GCObject**>(iter->Dereference());
 
-					if (child)
+					if (child != nullptr && child->atomicMark())
 					{
-						stack.push_back(child);
+						stack.push_back({ child, depth + 1 });
 					}
 
 					iter->Increment();
@@ -315,7 +331,9 @@ void GCManager::markFrom(GCObject* root)
 			}
 		}
 	}
-	stack.clear();
+
+	size_t current = mMaxDepth.load(std::memory_order_relaxed);
+	while (current < maxDepth && !mMaxDepth.compare_exchange_weak(current, maxDepth, std::memory_order_relaxed)) {}
 }
 
 void GCManager::markFromRecursive(GCObject* object)

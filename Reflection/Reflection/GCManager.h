@@ -45,6 +45,7 @@ private:
 
 	FixedVector<GCObject*, POOL_SIZE> mGCObjects;
 	GCDebugInfo mLastDebugInfo;
+	std::atomic<size_t> mMaxDepth;
 
 	std::vector<GCObject*> mTempCacheObject;
 };

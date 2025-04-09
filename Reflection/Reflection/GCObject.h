@@ -22,6 +22,12 @@ public:
 	void SetRoot(bool v) { mbRoot = v; }
 
 private:
+	bool atomicMark()
+	{
+		bool expected = false;
+		return mbMark.compare_exchange_strong(expected, true);
+	}
+
 	bool isMarked() const { return mbMark.load(std::memory_order_relaxed); }
 	void setMarked(bool v) { mbMark.store(v, std::memory_order_relaxed); }
 
